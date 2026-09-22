@@ -1,0 +1,15 @@
+# Dependencias y entornos
+node_modules/
+.env
+.env.local
+
+# Vercel
+.vercel/
+
+# Sistema Operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Respaldos
+Codigo/
