@@ -1,6 +1,6 @@
-# 🫔 TamalitosAPP - Offline PWA (iOS WebKit Standalone)
+# 🫔 TamalitosAPP — PWA Offline para Administración de Negocio de Tamales
 
-Progressive Web App (PWA) optimizada y validada para funcionar en **iPhone / iOS Safari** en modo pantalla completa (**Standalone**) y con soporte **100% Offline** mediante Service Workers y LocalStorage.
+Progressive Web App (PWA) **100% Offline** diseñada para la operación diaria de un negocio de venta de tamales. Optimizada para **iPhone e iPad** en modo Standalone (pantalla completa, sin barra de Safari).
 
 ---
 
@@ -8,62 +8,66 @@ Progressive Web App (PWA) optimizada y validada para funcionar en **iPhone / iOS
 
 ```text
 TamalitosAPP/
-├── Codigo/                     # Código fuente de la Progressive Web App
-│   ├── icons/                  # Iconos generados para iOS y Android
-│   │   ├── apple-touch-icon.png# Icono estándar 180x180 para iOS Safari
-│   │   ├── icon-192.png        # Icono 192x192
-│   │   ├── icon-512.png        # Icono 512x512
-│   │   └── icon.svg            # Vectorial SVG
-│   ├── generate-icons.js       # Script generador de iconos
-│   ├── index.html              # UI, App Shell, Safe Area y controladores
-│   ├── manifest.json           # Web App Manifest (standalone, colores)
-│   └── sw.js                   # Service Worker puro (v2) con estrategia Offline-First
+├── Codigo/                                    # Código fuente de la PWA
+│   ├── icons/                                 # Iconos (PNG + SVG)
+│   ├── css/                                   # (Sprint 1) Design System
+│   ├── js/                                    # (Sprint 1) Lógica SPA modular
+│   ├── index.html                             # Shell HTML único
+│   ├── manifest.json                          # Web App Manifest
+│   ├── sw.js                                  # Service Worker Offline-First
+│   └── generate-icons.js                      # Generador de iconos
 │
-├── Documentacion/              # Documentación de ingeniería y producto
-│   ├── arquitectura.md         # Diagrama de capas, ciclo de vida del SW y WebKit
-│   ├── flujo.md                # Flujos de instalación, interceptación de caché y offline
-│   └── historias_usuario.md    # Historias de usuario y criterios de aceptación (Gherkin)
+├── Documentacion/                             # Especificación técnica completa
+│   ├── fase1_analisis_brechas.md              # Análisis de vacíos y recomendaciones MVP
+│   ├── fase2_arquitectura.md                  # Arquitectura, modelo de datos y design system
+│   ├── fase3_historias_usuario.md             # Épicas, HUs y criterios de aceptación (Gherkin)
+│   └── fase4_plan_trabajo.md                  # Plan de 5 sprints con WBS y trazabilidad
 │
-├── .gitignore                  # Exclusiones de control de versiones
-├── .vercelignore               # Exclusiones para despliegue
-├── vercel.json                 # Enrutamiento automático hacia Codigo/
-└── README.md                   # Resumen del proyecto
+├── .gitignore
+├── .vercelignore
+├── vercel.json
+└── README.md
 ```
 
 ---
 
-## 🚀 Características Principales
+## 🧩 Módulos Funcionales
 
-- **Soporte iOS WebKit Completo:**
-  - Metaetiquetas específicas para Safari (`apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`).
-  - Ajuste de pantalla para Dynamic Island y Notch (`viewport-fit=cover` con safe-area insets).
-  - Iconos PNG estándar generados específicamente para `apple-touch-icon`.
-- **Modo Standalone Nativo:**
-  - Detección en tiempo real de si la aplicación se ejecuta dentro del navegador Safari o instalada en la pantalla de inicio (`navigator.standalone`).
-- **100% Offline (Service Worker v2):**
-  - Precacheo de la App Shell (`install`).
-  - Limpieza automática de versiones obsoletas (`activate`).
-  - Estrategia Cache-First con Stale-While-Revalidate y fallback de navegación garantizado para carga sin internet.
-- **Persistencia Local:**
-  - Almacenamiento y recuperación de datos con `localStorage`.
-- **Diagnóstico en Pantalla:**
-  - Indicador de conectividad de red en tiempo real (`online` / `offline`).
-  - Consola de logs visual en la propia UI para depuración directa en dispositivos móviles.
+| Módulo | Pantalla | Ruta | Descripción |
+|---|---|---|---|
+| Home | Dashboard | `#/` | Logo, versión, accesos a venta, insumos y configuración |
+| POS | Terminal de Venta | `#/venta` | Grilla de productos, comanda, cobro y ticket digital |
+| Historial | Ventas del Día | `#/historial` | Lista cronológica con filtro, resumen diario y cancelación |
+| Insumos | Hub + Catálogo | `#/insumos-costos` `#/insumos` | Catálogo de insumos con swipe-to-delete |
+| Costos | Registro de Gastos | `#/costos` | Formulario de egresos con historial por fecha |
+| Config | Configuración | `#/config` | Nombre del negocio, admin productos, exportar datos |
+| Productos | CRUD Productos | `#/productos` | Alta, edición, desactivación del catálogo de venta |
 
 ---
 
-## 📱 Instalación en iPhone
+## 📖 Documentación Técnica
+
+- [Fase 1 — Análisis de Brechas y Flujos Inconclusos](Documentacion/fase1_analisis_brechas.md)
+- [Fase 2 — Arquitectura, Modelo de Datos y Design System](Documentacion/fase2_arquitectura.md)
+- [Fase 3 — Épicas e Historias de Usuario (Gherkin)](Documentacion/fase3_historias_usuario.md)
+- [Fase 4 — Plan de Trabajo en 5 Sprints](Documentacion/fase4_plan_trabajo.md)
+
+---
+
+## 🚀 Stack Técnico
+
+- **Frontend:** HTML5 + CSS3 + JavaScript ES6 (Vanilla, sin framework)
+- **Persistencia:** IndexedDB (datos transaccionales) + localStorage (configuración)
+- **Offline:** Service Worker con estrategia Cache-First / Stale-While-Revalidate
+- **Exportación:** Web Share API (iOS nativo) + CSV con BOM UTF-8
+- **Despliegue:** Vercel (HTTPS automático, requerido por iOS para Service Workers)
+
+---
+
+## 📱 Instalación en iPhone / iPad
 
 1. Abre la URL del proyecto en **Safari** (por HTTPS).
-2. Toca el botón **Compartir** (icono de cuadrado con flecha hacia arriba).
-3. Selecciona **"Agregar al inicio"** (*Add to Home Screen*).
-4. Confirma el nombre `TamalitosAPP` y presiona **Agregar**.
-5. Abre la aplicación desde el nuevo icono en tu pantalla de inicio.
-6. Activa el **Modo Avión** para comprobar que la app carga y opera sin conexión.
-
----
-
-## 📖 Documentación Adicional
-- [Arquitectura del Sistema](Documentacion/arquitectura.md)
-- [Diagramas de Flujo de Datos y Usuario](Documentacion/flujo.md)
-- [Historias de Usuario](Documentacion/historias_usuario.md)
+2. Toca el botón **Compartir** (icono de cuadrado con flecha arriba).
+3. Selecciona **"Agregar al inicio"**.
+4. Abre la app desde el icono en tu pantalla de inicio.
+5. Activa el **Modo Avión** para comprobar el funcionamiento offline.

@@ -1,3 +1,4 @@
+.vercel
 # Dependencias y entornos
 node_modules/
 .env
@@ -10,3 +11,6 @@ node_modules/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Respaldos
+Codigo/
