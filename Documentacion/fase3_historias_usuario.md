@@ -455,3 +455,4 @@ Cuando intento importar
 Entonces se muestra un error: "El archivo seleccionado no es un respaldo válido"
 Y los datos existentes NO se modifican
 ```
+

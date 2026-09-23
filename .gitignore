@@ -1,4 +1,3 @@
-.vercel
 # Dependencias y entornos
 node_modules/
 .env
@@ -12,5 +11,7 @@ node_modules/
 Thumbs.db
 desktop.ini
 
-# Respaldos
-Codigo/
+# Editores
+.obsidian/
+.vscode/
+.idea/

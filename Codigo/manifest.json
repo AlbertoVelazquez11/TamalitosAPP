@@ -1,14 +1,15 @@
 {
-  "name": "Offline PWA MVP",
-  "short_name": "OfflinePWA",
-  "description": "MVP de Progressive Web App con soporte offline para iOS WebKit",
+  "name": "TamalitosAPP",
+  "short_name": "Tamalitos",
+  "description": "Administración de ventas e insumos para negocio de tamales. Funciona 100% offline.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
-  "categories": ["utilities", "productivity"],
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "lang": "es",
+  "categories": ["business", "productivity", "utilities"],
   "icons": [
     {
       "src": "icons/icon-192.png",
@@ -29,4 +30,3 @@
     }
   ]
 }
-

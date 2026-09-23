@@ -1,141 +1,160 @@
-// sw.js - Service Worker robusto para Offline PWA (compatible con iOS WebKit / Safari)
-const CACHE_NAME = 'offline-pwa-v2';
+/**
+ * sw.js — Service Worker v3 — TamalitosAPP
+ *
+ * Estrategia: Cache-First para el app shell + Stale-While-Revalidate
+ * para mantener los assets actualizados en segundo plano.
+ *
+ * Cambios respecto a versiones anteriores:
+ *  - Nombre de caché actualizado a 'tamalitos-v3'
+ *  - ASSETS_TO_CACHE actualizado con la nueva estructura SPA
+ *  - Módulos ES6 incluidos en el precacheo
+ */
 
-// Recursos esenciales para la app shell offline
+const CACHE_NAME = 'tamalitos-v3';
+
+// Recursos del app shell que se precachean en la instalación.
+// El SW debe poder servir la app completa sin ninguna petición a la red.
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
+
+  // CSS Design System
+  './css/variables.css',
+  './css/base.css',
+  './css/components.css',
+  './css/views.css',
+
+  // JS — Core
+  './js/app.js',
+  './js/router.js',
+  './js/store.js',
+  './js/db.js',
+
+  // JS — Components
+  './js/components/toast.js',
+  './js/components/modal.js',
+
+  // JS — Views
+  './js/views/home.js',
+  './js/views/pos.js',
+  './js/views/historial.js',
+  './js/views/insumos-hub.js',
+  './js/views/insumos.js',
+  './js/views/costos.js',
+  './js/views/config.js',
+  './js/views/productos.js',
+
+  // Iconos
+  './icons/apple-touch-icon.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
-  './icons/apple-touch-icon.png',
-  './icons/icon.svg'
+  './icons/icon.svg',
 ];
 
-// 1. Instalación: Precacheo de la app shell
+// ══════════════════════════════════════════════════════════
+// INSTALL — Precacheo del App Shell
+// ══════════════════════════════════════════════════════════
+
 self.addEventListener('install', (event) => {
-  console.log('[SW] Instalando versión:', CACHE_NAME);
-  self.skipWaiting();
+  console.log('[SW v3] Instalando y precacheando app shell...');
+  self.skipWaiting(); // No esperar a que se cierren pestañas anteriores
 
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
-      console.log('[SW] Precacheando recursos esenciales...');
-      await cache.addAll(ASSETS_TO_CACHE);
+      // Agregar recursos uno por uno para identificar fallos específicos
+      const resultados = await Promise.allSettled(
+        ASSETS_TO_CACHE.map(url =>
+          cache.add(url).catch(err => {
+            console.warn(`[SW v3] No se pudo cachear: ${url}`, err.message);
+          })
+        )
+      );
 
-      // Asegurar coincidencia para "/" y "/index.html"
-      const indexRes = await cache.match('./index.html');
-      if (indexRes) {
-        await cache.put('./', indexRes.clone());
-      }
-      console.log('[SW] Precacheo exitoso completado.');
-    }).catch((error) => {
-      console.error('[SW] Error en precacheo:', error);
+      const ok     = resultados.filter(r => r.status === 'fulfilled').length;
+      const fallos = resultados.filter(r => r.status === 'rejected').length;
+      console.log(`[SW v3] Precacheo: ${ok} ok, ${fallos} fallos.`);
     })
   );
 });
 
-// 2. Activación: Limpieza de versiones viejas de caché y toma de control inmediata
+// ══════════════════════════════════════════════════════════
+// ACTIVATE — Limpieza de versiones anteriores
+// ══════════════════════════════════════════════════════════
+
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activando nueva versión...');
+  console.log('[SW v3] Activando y limpiando cachés antiguas...');
+
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            console.log('[SW] Eliminando caché previa:', key);
-            return caches.delete(key);
+    caches.keys().then((nombres) =>
+      Promise.all(
+        nombres.map((nombre) => {
+          if (nombre !== CACHE_NAME) {
+            console.log('[SW v3] Eliminando caché obsoleta:', nombre);
+            return caches.delete(nombre);
           }
         })
-      );
-    }).then(() => {
-      console.log('[SW] Clientes reclamados.');
+      )
+    ).then(() => {
+      console.log('[SW v3] Reclamando control de clientes activos.');
       return self.clients.claim();
     })
   );
 });
 
-// 3. Fetch: Estrategia robusta Offline First para navegación y Cache First con Stale-While-Revalidate
+// ══════════════════════════════════════════════════════════
+// FETCH — Cache-First + Stale-While-Revalidate
+// ══════════════════════════════════════════════════════════
+
 self.addEventListener('fetch', (event) => {
-  const request = event.request;
+  const { request } = event;
 
-  // Filtrar peticiones no soportadas
-  if (request.method !== 'GET' || !request.url.startsWith('http')) {
-    return;
-  }
+  // Solo interceptar GET y URLs http(s) — ignorar chrome-extension, etc.
+  if (request.method !== 'GET' || !request.url.startsWith('http')) return;
 
-  // Manejo de Navegación (HTML de la app)
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      (async () => {
-        try {
-          // Primero buscar en caché si existe coincidencia exacta
-          const cachedExact = await caches.match(request);
-          if (cachedExact) {
-            // Actualizar en segundo plano si hay red disponible
-            fetch(request).then(async (netRes) => {
-              if (netRes && netRes.ok) {
-                const cache = await caches.open(CACHE_NAME);
-                cache.put(request, netRes);
-              }
-            }).catch(() => {});
-            return cachedExact;
-          }
+  // Ignorar peticiones a otros orígenes (APIs externas, analytics, etc.)
+  if (!request.url.startsWith(self.location.origin)) return;
 
-          // Si hay red, intentar obtener de la red
-          const netRes = await fetch(request);
-          if (netRes && netRes.ok) {
-            const cache = await caches.open(CACHE_NAME);
-            cache.put(request, netRes.clone());
-            return netRes;
-          }
-
-          // Si la red no devuelve OK, fallback al index en caché
-          const cachedFallback = await caches.match('./index.html') || await caches.match('./');
-          if (cachedFallback) return cachedFallback;
-
-          return netRes;
-        } catch (error) {
-          // Modo Offline (sin conexión a internet): entregar siempre index.html
-          console.log('[SW] Modo offline: entregando index.html precacheado');
-          const fallback = await caches.match('./index.html') || await caches.match('./');
-          if (fallback) {
-            return fallback;
-          }
-          throw error;
-        }
-      })()
-    );
-    return;
-  }
-
-  // Manejo de Recursos estáticos (imágenes, json, scripts, css)
   event.respondWith(
-    (async () => {
-      // 1. Intentar desde caché
-      const cached = await caches.match(request);
-      if (cached) {
-        // Revalidar en segundo plano
-        fetch(request).then(async (netRes) => {
-          if (netRes && netRes.ok) {
-            const cache = await caches.open(CACHE_NAME);
-            cache.put(request, netRes);
-          }
-        }).catch(() => {});
-        return cached;
+    caches.match(request).then((cachedResponse) => {
+
+      // ── Cache-First: si existe en caché, devolver inmediatamente ──
+      if (cachedResponse) {
+        // Stale-While-Revalidate: actualizar en segundo plano si hay red
+        fetch(request)
+          .then((networkResponse) => {
+            if (networkResponse?.ok) {
+              caches.open(CACHE_NAME).then(cache =>
+                cache.put(request, networkResponse)
+              );
+            }
+          })
+          .catch(() => { /* sin red — no pasa nada, ya devolvimos la caché */ });
+
+        return cachedResponse;
       }
 
-      // 2. Si no está en caché, buscar en red y guardar
-      try {
-        const netRes = await fetch(request);
-        if (netRes && netRes.ok) {
-          const cache = await caches.open(CACHE_NAME);
-          cache.put(request, netRes.clone());
-        }
-        return netRes;
-      } catch (err) {
-        // En caso de fallo total, si era una imagen o icono, devolver lo que haya
-        return cached;
-      }
-    })()
+      // ── Network-First: recurso no cacheado, intentar la red ──
+      return fetch(request)
+        .then((networkResponse) => {
+          // Guardar en caché solo respuestas válidas del mismo origen
+          if (networkResponse?.ok && networkResponse.type === 'basic') {
+            const toCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then(cache =>
+              cache.put(request, toCache)
+            );
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          // ── Offline Fallback ──
+          // Si es una petición de navegación, servir index.html del caché
+          if (request.mode === 'navigate') {
+            return caches.match('./index.html') || caches.match('./');
+          }
+          // Para otros recursos, no hay fallback disponible
+        });
+    })
   );
 });
+

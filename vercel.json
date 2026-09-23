@@ -1,7 +1,19 @@
 {
-  "cleanUrls": true,
   "rewrites": [
-    { "source": "/(.*)", "destination": "/Codigo/$1" }
+    { "source": "/sw.js",           "destination": "/Codigo/sw.js" },
+    { "source": "/manifest.json",   "destination": "/Codigo/manifest.json" },
+    { "source": "/css/(.*)",        "destination": "/Codigo/css/$1" },
+    { "source": "/js/(.*)",         "destination": "/Codigo/js/$1" },
+    { "source": "/icons/(.*)",      "destination": "/Codigo/icons/$1" },
+    { "source": "/(.*)",            "destination": "/Codigo/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache" },
+        { "key": "Service-Worker-Allowed", "value": "/" }
+      ]
+    }
   ]
 }
-

@@ -176,3 +176,4 @@ flowchart LR
 | HU-061: Importar Respaldo | | | | ✅ | |
 
 ✅ = Implementación principal | 🔍 = Verificación / Ajustes de QA
+

@@ -1,0 +1,208 @@
+/* ============================================================
+   base.css — Reset, Layout Shell iOS, Tipografía base
+   ============================================================ */
+
+/* ── RESET ────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── HTML / BODY — Shell fijo para iOS Standalone ─────────── */
+html {
+  /* Prevenir pull-to-refresh accidental en Safari standalone */
+  overscroll-behavior-y: contain;
+  /* Altura real en iOS sin contar barra de Safari */
+  height: -webkit-fill-available;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.5;
+  color: var(--color-text);
+  background-color: var(--color-bg);
+
+  /* iOS: fijar el body para que el scroll sea interno */
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+
+  /* Suavizar transición de tema */
+  transition: background-color var(--transition-normal),
+              color var(--transition-normal);
+
+  /* Mejorar renderizado de fuentes en iOS */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── CONTENEDOR PRINCIPAL DE LA SPA ─────────────────────────
+   Único elemento scrolleable de la app.
+   El router reemplaza el contenido de #app sin recargar.    */
+#app {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  /* Scroll nativo con inercia en iOS */
+  -webkit-overflow-scrolling: touch;
+  /* Safe areas: el contenido no queda detrás del notch/home indicator */
+  padding-top: max(var(--space-4), var(--safe-top));
+  padding-bottom: max(var(--space-6), var(--safe-bottom));
+  padding-left: max(var(--space-4), var(--safe-left));
+  padding-right: max(var(--space-4), var(--safe-right));
+}
+
+/* Las vistas controlan su propio padding interno si lo necesitan */
+.view {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  max-width: 600px;   /* Legible también en iPad */
+  margin: 0 auto;
+}
+
+/* ── TIPOGRAFÍA BASE ─────────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+  color: var(--color-text);
+}
+
+h1 { font-size: var(--font-size-2xl); }
+h2 { font-size: var(--font-size-xl); }
+h3 { font-size: var(--font-size-lg); }
+h4 { font-size: var(--font-size-base); }
+
+p { color: var(--color-text); }
+
+small, .text-sm { font-size: var(--font-size-sm); }
+.text-xs        { font-size: var(--font-size-xs); }
+.text-muted     { color: var(--color-text-muted); }
+.text-center    { text-align: center; }
+.font-bold      { font-weight: var(--font-weight-bold); }
+.font-semibold  { font-weight: var(--font-weight-semibold); }
+.font-medium    { font-weight: var(--font-weight-medium); }
+
+/* ── PREVENIR COMPORTAMIENTOS NO DESEADOS EN iOS ─────────── */
+
+/* Sin highlight azul al tocar elementos interactivos */
+a, button, [role="button"], label, .touch-target {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Sin callout al presionar larga duración (menú de Safari) */
+a, button, img, .no-callout {
+  -webkit-touch-callout: none;
+}
+
+/* Sin selección de texto en controles táctiles */
+button, .btn, .touch-target, .product-btn {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ── INPUTS — Prevenir zoom automático en iOS ────────────── */
+/* iOS hace zoom si el font-size del input es < 16px */
+input, select, textarea, button {
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+}
+
+input, select, textarea {
+  /* Quitar estilos nativos de iOS para usar los propios */
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: var(--radius-md);
+}
+
+/* ── LINKS ───────────────────────────────────────────────── */
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+/* ── ANIMACIÓN DE ENTRADA DE VISTAS ─────────────────────── */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.view-enter {
+  animation: fadeInUp var(--transition-normal) ease both;
+}
+
+/* ── UTILIDADES DE LAYOUT ────────────────────────────────── */
+.flex         { display: flex; }
+.flex-col     { flex-direction: column; }
+.flex-1       { flex: 1; }
+.items-center { align-items: center; }
+.items-start  { align-items: flex-start; }
+.justify-between { justify-content: space-between; }
+.justify-center  { justify-content: center; }
+.gap-1  { gap: var(--space-1); }
+.gap-2  { gap: var(--space-2); }
+.gap-3  { gap: var(--space-3); }
+.gap-4  { gap: var(--space-4); }
+.gap-6  { gap: var(--space-6); }
+.w-full { width: 100%; }
+
+/* ── SEPARADOR ───────────────────────────────────────────── */
+.divider {
+  height: 1px;
+  background-color: var(--color-divider);
+  margin: var(--space-4) 0;
+}
+
+/* ── ESTADOS DE CARGA ────────────────────────────────────── */
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── ESTADO VACÍO ────────────────────────────────────────── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-12) var(--space-4);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.empty-state__icon {
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.empty-state__title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
+}
+
+.empty-state__desc {
+  font-size: var(--font-size-sm);
+  max-width: 240px;
+}
+

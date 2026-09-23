@@ -1,504 +1,90 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="light">
 <head>
   <meta charset="UTF-8">
-  <title>Offline PWA MVP</title>
+  <title>TamalitosAPP</title>
 
-  <!-- Viewport adaptado para iOS (viewport-fit=cover para Dynamic Island / Notch) -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <!-- ── Viewport iOS ── -->
+  <!-- viewport-fit=cover: fondo extiende bajo Dynamic Island/Notch -->
+  <!-- maximum-scale=1: previene zoom automático en iOS -->
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
-  <!-- Metaetiquetas críticas para iOS / Safari PWA -->
+  <!-- ── Meta tags obligatorios para PWA en iOS Safari ── -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
+  <!-- black-translucent: la barra de estado de iOS queda superpuesta sobre la app -->
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="OfflinePWA">
+  <meta name="apple-mobile-web-app-title" content="TamalitosAPP">
   <meta name="format-detection" content="telephone=no">
+  <meta name="application-name" content="TamalitosAPP">
 
-  <!-- Color del tema de la barra de navegación del navegador -->
-  <meta name="theme-color" content="#0f172a">
+  <!-- theme-color: color de la barra de navegación del navegador (dinámico) -->
+  <meta name="theme-color" content="#ffffff">
 
-  <!-- Vinculación del Web App Manifest -->
+  <!-- ── Web App Manifest ── -->
   <link rel="manifest" href="./manifest.json">
 
-  <!-- Iconos para Apple iOS (Safari exige PNG, no SVG, para 'Agregar al inicio') -->
-  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+  <!-- ── Iconos para iOS ──
+       Safari exige PNG para apple-touch-icon — SVG no es soportado.
+       El tamaño canónico es 180x180 para iPhone Retina.             -->
+  <link rel="apple-touch-icon"            href="./icons/apple-touch-icon.png">
   <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
-  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
+
+  <!-- ── Iconos para otros navegadores ── -->
+  <link rel="icon" type="image/svg+xml"   href="./icons/icon.svg">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="./icons/icon-512.png">
 
-  <style>
-    :root {
-      --bg: #0f172a;
-      --card-bg: #1e293b;
-      --card-border: #334155;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-      --primary: #38bdf8;
-      --primary-hover: #0284c7;
-      --success: #10b981;
-      --danger: #f43f5e;
-      --warning: #f59e0b;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      min-height: 100dvh;
-      /* Safe-area insets indispensables en iPhones con notch / Dynamic Island */
-      padding-top: max(20px, env(safe-area-inset-top));
-      padding-bottom: max(24px, env(safe-area-inset-bottom));
-      padding-left: max(16px, env(safe-area-inset-left));
-      padding-right: max(16px, env(safe-area-inset-right));
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    .container {
-      width: 100%;
-      max-width: 460px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    header {
-      text-align: center;
-      padding: 12px 0;
-    }
-
-    header h1 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-
-    header p {
-      color: var(--text-muted);
-      font-size: 0.88rem;
-      margin-top: 4px;
-    }
-
-    .card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 18px;
-      padding: 18px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-    }
-
-    .card-title {
-      font-size: 0.85rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-      margin-bottom: 12px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    /* Badges de estado */
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 14px;
-      border-radius: 9999px;
-      font-size: 0.92rem;
-      font-weight: 600;
-      transition: all 0.3s ease;
-    }
-
-    .status-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      display: inline-block;
-    }
-
-    .status-badge.online {
-      background: rgba(16, 185, 129, 0.15);
-      color: #34d399;
-      border: 1px solid rgba(16, 185, 129, 0.35);
-    }
-    .status-badge.online .status-dot {
-      background: #10b981;
-      box-shadow: 0 0 10px #10b981;
-    }
-
-    .status-badge.offline {
-      background: rgba(244, 63, 94, 0.15);
-      color: #fb7185;
-      border: 1px solid rgba(244, 63, 94, 0.35);
-    }
-    .status-badge.offline .status-dot {
-      background: #f43f5e;
-      box-shadow: 0 0 10px #f43f5e;
-    }
-
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      font-size: 0.9rem;
-    }
-    .info-row:last-child {
-      border-bottom: none;
-    }
-    .info-label {
-      color: var(--text-muted);
-    }
-    .info-val {
-      font-weight: 600;
-    }
-
-    /* Formulario y Botones */
-    input[type="text"] {
-      width: 100%;
-      background: rgba(15, 23, 42, 0.7);
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      padding: 12px 14px;
-      color: var(--text);
-      font-size: 1rem;
-      outline: none;
-      margin-bottom: 12px;
-      -webkit-appearance: none;
-    }
-    input[type="text"]:focus {
-      border-color: var(--primary);
-    }
-
-    .btn-group {
-      display: flex;
-      gap: 8px;
-    }
-
-    button {
-      flex: 1;
-      padding: 12px 14px;
-      border-radius: 12px;
-      border: none;
-      font-weight: 600;
-      font-size: 0.92rem;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      transition: background 0.2s, transform 0.1s;
-    }
-    button:active {
-      transform: scale(0.97);
-    }
-    .btn-primary {
-      background: var(--primary);
-      color: #0f172a;
-    }
-    .btn-secondary {
-      background: #334155;
-      color: var(--text);
-    }
-    .btn-danger {
-      background: rgba(244, 63, 94, 0.2);
-      color: #fb7185;
-      border: 1px solid rgba(244, 63, 94, 0.4);
-    }
-
-    .storage-result {
-      margin-top: 14px;
-      background: rgba(15, 23, 42, 0.6);
-      border-radius: 10px;
-      padding: 12px;
-      font-size: 0.88rem;
-      word-break: break-all;
-    }
-
-    /* Log Box */
-    .log-box {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 0.75rem;
-      background: #090d16;
-      border-radius: 10px;
-      padding: 10px;
-      max-height: 140px;
-      overflow-y: auto;
-      color: #a5f3fc;
-      line-height: 1.45;
-    }
-    .log-entry {
-      margin-bottom: 4px;
-    }
-    .log-time {
-      color: #64748b;
-      margin-right: 6px;
-    }
-  </style>
+  <!-- ── Design System CSS (orden de carga importa) ── -->
+  <link rel="stylesheet" href="./css/variables.css">
+  <link rel="stylesheet" href="./css/base.css">
+  <link rel="stylesheet" href="./css/components.css">
+  <link rel="stylesheet" href="./css/views.css">
 </head>
 <body>
 
-  <div class="container">
-    <header>
-      <h1>⚡ Offline PWA MVP</h1>
-      <p>Validación de PWA Standalone para iOS Safari</p>
-    </header>
+  <!--
+    SHELL ÚNICO DE LA SPA
+    ─────────────────────
+    #app es el único contenedor que cambia de contenido.
+    El router inyecta/reemplaza los hijos de este div al navegar.
 
-    <!-- 1. Estado de Red en Tiempo Real -->
-    <div class="card">
-      <div class="card-title">
-        <span>Conectividad de Red</span>
-        <span id="pingTime" style="font-size: 0.75rem; font-weight: normal;"></span>
-      </div>
-      <div style="display: flex; justify-content: center; padding: 10px 0;">
-        <div id="networkBadge" class="status-badge online">
-          <span class="status-dot"></span>
-          <span id="networkText">ONLINE</span>
-        </div>
-      </div>
-      <p style="font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-top: 6px;">
-        Pon tu iPhone en <strong>Modo Avión</strong> para verificar que la app sigue abierta y operativa.
-      </p>
-    </div>
-
-    <!-- 2. Diagnóstico de Instalación e iOS Standalone -->
-    <div class="card">
-      <div class="card-title">Diagnóstico del Entorno iOS</div>
-      
-      <div class="info-row">
-        <span class="info-label">Modo de Visualización:</span>
-        <span class="info-val" id="displayModeVal">Detectando...</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Service Worker:</span>
-        <span class="info-val" id="swStatusVal">Inicializando...</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Plataforma / Navegador:</span>
-        <span class="info-val" id="platformVal">Safari / iOS</span>
-      </div>
-    </div>
-
-    <!-- 3. Prueba de Persistencia Local (LocalStorage / Cache) -->
-    <div class="card">
-      <div class="card-title">Persistencia de Datos Offline</div>
-      <input type="text" id="noteInput" placeholder="Escribe un dato para guardar offline..." />
-      <div class="btn-group">
-        <button class="btn-primary" id="btnSave">💾 Guardar</button>
-        <button class="btn-secondary" id="btnLoad">🔄 Leer</button>
-        <button class="btn-danger" id="btnClear">🗑️</button>
-      </div>
-      <div class="storage-result" id="storageDisplay">
-        <em>No hay datos leídos aún.</em>
-      </div>
-    </div>
-
-    <!-- 4. Registro de Eventos en Pantalla -->
-    <div class="card">
-      <div class="card-title">Registro de Eventos (Console)</div>
-      <div class="log-box" id="logBox">
-        <div class="log-entry"><span class="log-time">[Init]</span> DOM cargado. Esperando eventos...</div>
-      </div>
+    Nota: body está `position: fixed` (ver base.css) para prevenir
+    el bounce/elastic scroll de iOS Standalone y el pull-to-refresh.
+    El scroll real ocurre AQUÍ dentro, no en el body.
+  -->
+  <div id="app" role="main" aria-live="polite">
+    <!-- Vista de carga inicial -->
+    <div class="view" style="
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 1rem;
+    ">
+      <div style="font-size: 3rem;">🫔</div>
+      <div class="loading-spinner"></div>
     </div>
   </div>
 
-  <script>
-    // Utilidad de Log en UI y Consola
-    function appLog(message, isError = false) {
-      const now = new Date();
-      const timeStr = now.toTimeString().split(' ')[0];
-      const logBox = document.getElementById('logBox');
-      
-      const entry = document.createElement('div');
-      entry.className = 'log-entry';
-      if (isError) entry.style.color = '#fb7185';
-      entry.innerHTML = `<span class="log-time">[${timeStr}]</span> ${message}`;
-      
-      logBox.appendChild(entry);
-      logBox.scrollTop = logBox.scrollHeight;
-      
-      if (isError) {
-        console.error(`[App] ${message}`);
-      } else {
-        console.log(`[App] ${message}`);
-      }
-    }
+  <!--
+    CONTENEDOR DE TOASTS
+    Se monta automáticamente por toast.js al primer uso.
+    Lo declaramos aquí para mayor claridad.
+  -->
+  <div class="toast-container" id="toast-container" aria-live="assertive" aria-atomic="true"></div>
 
-    // 1. Detección de Conexión (navigator.onLine y eventos)
-    function updateOnlineStatus() {
-      const isOnline = navigator.onLine;
-      const badge = document.getElementById('networkBadge');
-      const text = document.getElementById('networkText');
+  <!--
+    BOOTSTRAP DE LA APP
+    type="module" habilita:
+      - import/export ES6 nativo (soportado en iOS Safari 10.1+)
+      - Scope de módulo (sin contaminación global)
+      - Defer automático (ejecuta después de parsear el DOM)
+  -->
+  <script type="module" src="./js/app.js"></script>
 
-      if (isOnline) {
-        badge.className = 'status-badge online';
-        text.textContent = 'ONLINE (Conectado)';
-        appLog('Conexión reestablecida: ONLINE');
-      } else {
-        badge.className = 'status-badge offline';
-        text.textContent = 'OFFLINE (Sin Conexión)';
-        appLog('Conexión perdida: Modo OFFLINE activo');
-      }
-    }
-
-    window.addEventListener('online', updateOnlineStatus);
-    window.addEventListener('offline', updateOnlineStatus);
-
-    // 2. Detección de Modo Standalone en iOS (Safari WebKit)
-    function detectDisplayMode() {
-      const displayVal = document.getElementById('displayModeVal');
-      const isIosStandalone = ('standalone' in window.navigator) && (window.navigator.standalone === true);
-      const isDisplayStandalone = window.matchMedia('(display-mode: standalone)').matches;
-
-      if (isIosStandalone || isDisplayStandalone) {
-        displayVal.textContent = '📱 Standalone PWA (Instalada)';
-        displayVal.style.color = '#34d399';
-        appLog('Ejecutando en modo STANDALONE de iOS');
-      } else {
-        displayVal.textContent = '🌐 Navegador Safari (Pestaña)';
-        displayVal.style.color = '#f59e0b';
-        appLog('Ejecutando dentro de navegador web');
-      }
-
-      // Información de plataforma básica
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-      document.getElementById('platformVal').textContent = isIOS ? 'Apple iPhone / iOS' : 'Navegador Web';
-    }
-
-    // 3. Persistencia con LocalStorage
-    const STORAGE_KEY = 'pwa_mvp_offline_data';
-    const noteInput = document.getElementById('noteInput');
-    const storageDisplay = document.getElementById('storageDisplay');
-
-    document.getElementById('btnSave').addEventListener('click', () => {
-      const val = noteInput.value.trim();
-      if (!val) {
-        alert('Ingresa algún texto antes de guardar.');
-        return;
-      }
-      const payload = {
-        text: val,
-        savedAt: new Date().toLocaleString()
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-      appLog(`Dato guardado en localStorage: "${val}"`);
-      noteInput.value = '';
-      renderStoredData();
-    });
-
-    document.getElementById('btnLoad').addEventListener('click', () => {
-      renderStoredData();
-      appLog('Lectura manual de localStorage solicitada.');
-    });
-
-    document.getElementById('btnClear').addEventListener('click', () => {
-      localStorage.removeItem(STORAGE_KEY);
-      storageDisplay.innerHTML = '<em>Datos eliminados de memoria.</em>';
-      appLog('localStorage limpiado.');
-    });
-
-    function renderStoredData() {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) {
-        storageDisplay.innerHTML = '<em>No hay datos guardados aún.</em>';
-        return;
-      }
-      try {
-        const data = JSON.parse(raw);
-        storageDisplay.innerHTML = `<strong>Dato persistido:</strong> ${data.text}<br><span style="color:var(--text-muted);font-size:0.8rem;">Guardado el: ${data.savedAt}</span>`;
-      } catch (e) {
-        storageDisplay.textContent = raw;
-      }
-    }
-
-    // 4. Registro del Service Worker
-    function registerServiceWorker() {
-      const swStatus = document.getElementById('swStatusVal');
-
-      if (!('serviceWorker' in navigator)) {
-        swStatus.textContent = '❌ No soportado por el navegador';
-        swStatus.style.color = '#f43f5e';
-        appLog('Service Worker no es soportado en este entorno.', true);
-        return;
-      }
-
-      // En iOS Safari, los Service Workers requieren protocolo HTTPS o localhost
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js', { scope: './' })
-          .then((registration) => {
-            appLog(`Service Worker registrado con scope: ${registration.scope}`);
-            
-            if (registration.installing) {
-              swStatus.textContent = '⏳ Instalando...';
-              swStatus.style.color = '#f59e0b';
-            } else if (registration.waiting) {
-              swStatus.textContent = '⏳ En espera (Waiting)';
-              swStatus.style.color = '#f59e0b';
-            } else if (registration.active) {
-              swStatus.textContent = '✅ Activo y Protegiendo';
-              swStatus.style.color = '#34d399';
-            }
-
-            // Escuchar cambios de estado del SW
-            registration.onupdatefound = () => {
-              const installingWorker = registration.installing;
-              installingWorker.onstatechange = () => {
-                if (installingWorker.state === 'installed') {
-                  if (navigator.serviceWorker.controller) {
-                    appLog('Nueva versión instalada disponible.');
-                  } else {
-                    appLog('Contenido precacheado listo para uso Offline.');
-                    swStatus.textContent = '✅ Activo (Offline Ready)';
-                    swStatus.style.color = '#34d399';
-                  }
-                }
-              };
-            };
-          })
-          .catch((error) => {
-            swStatus.textContent = '❌ Error de registro';
-            swStatus.style.color = '#f43f5e';
-            appLog(`Error al registrar Service Worker: ${error.message}`, true);
-          });
-
-        // Verificar si ya tiene el control inmediato
-        if (navigator.serviceWorker.controller) {
-          swStatus.textContent = '✅ Activo (Controlando la app)';
-          swStatus.style.color = '#34d399';
-          appLog('La página ya está controlada por el Service Worker.');
-        }
-
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          swStatus.textContent = '✅ Activo (Controlando la app)';
-          swStatus.style.color = '#34d399';
-          appLog('Controlador de Service Worker actualizado.');
-        });
-      });
-    }
-
-    // Inicialización al cargar la página
-    document.addEventListener('DOMContentLoaded', () => {
-      updateOnlineStatus();
-      detectDisplayMode();
-      renderStoredData();
-      registerServiceWorker();
-    });
-  </script>
 </body>
 </html>
 
