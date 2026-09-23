@@ -212,12 +212,19 @@ export async function clearStore(storeName) {
 // ══════════════════════════════════════════════════════════
 
 /**
- * Devuelve todos los productos con activo === true,
+ * Devuelve todos los productos con activo !== false,
  * ordenados por su campo 'orden'.
+ *
+ * FIX BUG-005: IDBKeyRange no acepta booleanos como clave válida (solo
+ * string, number, Date, Array). Safari/WebKit iOS lanza
+ * "Provided data is inadequate" con IDBKeyRange.only(true).
+ * Se reemplaza por filtro JS puro sobre todos los productos.
  */
 export async function getProductosActivos() {
-  const todos = await getAll('productos', 'activo', IDBKeyRange.only(true));
-  return todos.sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+  const todos = await getAll('productos');
+  return todos
+    .filter(p => p.activo !== false)
+    .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
 }
 
 /**
