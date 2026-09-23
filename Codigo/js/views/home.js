@@ -12,6 +12,7 @@
 
 import { store }   from '../store.js';
 import { navegar } from '../router.js';
+import { esc }     from '../utils.js';
 
 /**
  * @param {HTMLElement} container — El contenedor .view asignado por el router
@@ -35,7 +36,7 @@ export async function render(container) {
         <div class="home-logo" aria-hidden="true">🫔</div>
         <div>
           <h1 class="home-business-name" id="home-business-name">
-            ${_escapar(config?.nombreNegocio ?? 'Mi Negocio')}
+            ${esc(config?.nombreNegocio ?? 'Mi Negocio')}
           </h1>
           <p class="home-tagline text-muted">Administración de Ventas</p>
         </div>
@@ -79,14 +80,5 @@ export async function render(container) {
   return () => {
     unsub();
   };
-}
-
-// Utilidad simple de escapado HTML
-function _escapar(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 

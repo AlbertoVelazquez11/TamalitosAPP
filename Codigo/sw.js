@@ -10,7 +10,7 @@
  *  - Módulos ES6 incluidos en el precacheo
  */
 
-const CACHE_NAME = 'tamalitos-v3';
+const CACHE_NAME = 'tamalitos-v4';
 
 // Recursos del app shell que se precachean en la instalación.
 // El SW debe poder servir la app completa sin ninguna petición a la red.
@@ -30,10 +30,13 @@ const ASSETS_TO_CACHE = [
   './js/router.js',
   './js/store.js',
   './js/db.js',
+  './js/utils.js',
+  './js/gestures.js',
 
   // JS — Components
   './js/components/toast.js',
   './js/components/modal.js',
+  './js/components/swipe-item.js',
 
   // JS — Views
   './js/views/home.js',

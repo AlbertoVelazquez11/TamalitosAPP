@@ -6,6 +6,7 @@
 import { store, guardarConfig } from '../store.js';
 import { navegar, navegarAtras } from '../router.js';
 import { toast }                 from '../components/toast.js';
+import { esc }                   from '../utils.js';
 
 export async function render(container) {
   const { config } = store.getState();
@@ -26,7 +27,7 @@ export async function render(container) {
             id="input-nombre"
             type="text"
             class="form-input"
-            value="${_esc(config?.nombreNegocio ?? '')}"
+            value="${esc(config?.nombreNegocio ?? '')}"
             placeholder="Nombre de tu negocio"
             maxlength="50"
           >
@@ -75,7 +76,7 @@ export async function render(container) {
 
       <!-- Versión -->
       <div style="text-align:center; padding: var(--space-4) 0;">
-        <span class="version-badge">TamalitosAPP v${_esc(config?.version ?? '1.0.0')}</span>
+        <span class="version-badge">TamalitosAPP v${esc(config?.version ?? '1.0.0')}</span>
       </div>
     </div>
   `;
@@ -105,8 +106,3 @@ export async function render(container) {
   container.querySelector('#btn-back').addEventListener('click', navegarAtras);
   container.querySelector('#btn-productos').addEventListener('click', () => navegar('productos'));
 }
-
-function _esc(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-

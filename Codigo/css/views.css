@@ -484,8 +484,28 @@
   color: white;
 }
 
+/* Botón de Activar (estado alternativo al de Desactivar) */
+.swipe-action-btn--activate {
+  background-color: var(--color-success);
+  color: white;
+}
+
 .swipe-action-btn__icon {
   font-size: 1.25rem;
+}
+
+/* ══════════════════════════════════════════════════════════
+   LISTA DE PRODUCTOS (Admin)
+   ══════════════════════════════════════════════════════════ */
+
+/* Item de producto en la lista de administración */
+.product-list-item {
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.product-list-item:active {
+  background-color: var(--color-surface-alt);
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -508,4 +528,3 @@
   padding: 0 var(--space-1);
   margin-bottom: var(--space-1);
 }
-
