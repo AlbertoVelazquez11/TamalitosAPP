@@ -83,3 +83,4 @@ export function ahoraHora() {
     .map(n => String(n).padStart(2, '0'))
     .join(':');
 }
+

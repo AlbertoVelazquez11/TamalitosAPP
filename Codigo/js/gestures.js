@@ -175,3 +175,4 @@ export function aplicarSwipe(itemContent, { anchoAccion = 80, onReveal, onClose 
     }
   };
 }
+

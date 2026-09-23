@@ -24,3 +24,4 @@ try {
   console.error('❌ Error en el despliegue:', error.message);
   process.exit(1);
 }
+
