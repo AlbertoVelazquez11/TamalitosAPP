@@ -1,24 +1,18 @@
 /**
- * pos.js — Punto de Venta (Sprint 3)
+ * pos.js — Punto de Venta (Sprint 3 — Fix)
  *
  * HU-040: Grilla táctil de productos activos
  * HU-041: Comanda reactiva con +/- por ítem
  * HU-042: Modal de cobro con descuento y confirmación
  * HU-043: Fiado / Pendiente de pago discreto
  *
- * Layout de dos paneles:
- *  ┌─────────────────────────────────┐
- *  │  Header (← Historial)           │
- *  ├─────────────────────────────────┤
- *  │  Grilla de productos            │ ← scroll
- *  │  (2 cols iPhone / 3 cols iPad)  │
- *  ├─────────────────────────────────┤
- *  │  Panel de comanda               │ ← fijo, items scrolleables internamente
- *  │   item 1    −  2  +   $50.00   │
- *  │   ─────────────────────────────│
- *  │   Total: $50.00                 │
- *  │   [ Cobrar $50.00 ]             │
- *  └─────────────────────────────────┘
+ * BUGS CORREGIDOS:
+ *  - Fix #1: El .view wrapper del router necesita height:100% cuando #app.pos-active (CSS fix)
+ *  - Fix #2: El view-header del POS necesita padding-top del safe-area-top propio
+ *    ya que #app.pos-active elimina el padding de #app
+ *  - Fix #3: product-btn--added ahora existe en CSS
+ *  - Fix #4: la grilla del POS necesita padding lateral explícito
+ *    ya que .pos-products-section ya no hereda el padding de #app
  */
 
 import { getProductosActivos, guardarVentaCompleta } from '../db.js';
@@ -37,11 +31,14 @@ export async function render(container) {
   const productos = await getProductosActivos();
 
   // ── Estructura base de la vista ──────────────────────────
+  // NOTA: los productos vacíos y la grilla van dentro de pos-products-section
+  // que tiene su propio scroll. El padding lateral viene de pos-products-section.
   container.innerHTML = `
     <div class="pos-view">
 
-      <!-- Header -->
-      <div class="view-header">
+      <!-- Header: necesita padding-top para respetar safe-area (notch/dynamic island)
+           ya que #app.pos-active resetea el padding del #app -->
+      <div class="view-header pos-header">
         <button class="btn btn-icon" id="btn-back" aria-label="Regresar">←</button>
         <h1 class="view-header__title">Venta</h1>
         <div class="view-header__actions">
@@ -100,7 +97,7 @@ export async function render(container) {
 
     // Animación táctil de feedback
     btn.classList.add('product-btn--added');
-    setTimeout(() => btn.classList.remove('product-btn--added'), 200);
+    setTimeout(() => btn.classList.remove('product-btn--added'), 180);
 
     agregarAlPedido(prod);
   });
@@ -183,7 +180,7 @@ function _renderComanda(container, pedido) {
   footerEl.innerHTML = `
     <div class="order-total-row">
       <span class="order-total-label">Total</span>
-      <span class="order-total-amount" id="total-display">${formatMXN(subtotal)}</span>
+      <span class="order-total-amount">${formatMXN(subtotal)}</span>
     </div>
     <button class="btn btn-primary btn-block home-cta" id="btn-cobrar"
             style="min-height: 56px; font-size: var(--font-size-lg);">
@@ -201,6 +198,8 @@ function _renderComanda(container, pedido) {
 // ══════════════════════════════════════════════════════════
 
 function _abrirModalCobro(pedido) {
+  if (pedido.length === 0) return;
+
   const subtotal = pedido.reduce(
     (sum, item) => sum + item.precioUnitario * item.cantidad, 0
   );
@@ -212,6 +211,8 @@ function _abrirModalCobro(pedido) {
     </div>
   `).join('');
 
+  // Nota: no usamos .switch aquí porque iOS tiene bugs con inputs dentro de modals.
+  // Usamos un checkbox estándar estilizado como toggle.
   const contenidoHTML = `
     <!-- Resumen del pedido -->
     <div class="cobro-summary">${resumenHTML}</div>
@@ -226,15 +227,15 @@ function _abrirModalCobro(pedido) {
              inputmode="decimal" autocomplete="off">
     </div>
 
-    <!-- Total con descuento (reactivo) -->
+    <!-- Total con descuento (actualizado por JS) -->
     <div class="cobro-total-row">
       <span class="cobro-total-label">Total a cobrar</span>
       <span class="cobro-total-amount" id="cobro-total-display">${formatMXN(subtotal)}</span>
     </div>
 
-    <!-- Toggle Fiado (discreto) -->
+    <!-- Fiado (pendiente de pago) — discreto -->
     <div class="fiado-row">
-      <span class="fiado-label">💸 Pendiente de pago (fiado)</span>
+      <label class="fiado-label" for="cobro-fiado">💸 Pendiente de pago (fiado)</label>
       <label class="switch">
         <input type="checkbox" id="cobro-fiado">
         <span class="switch__track"></span>
@@ -246,27 +247,28 @@ function _abrirModalCobro(pedido) {
     titulo:   'Confirmar Cobro',
     contenido: contenidoHTML,
     botones: [
-      { texto: 'Cancelar', clase: 'btn-ghost',   accion: () => cerrar() },
+      { texto: 'Cancelar',        clase: 'btn-ghost',   accion: () => cerrar() },
       { texto: '✓ Confirmar Cobro', clase: 'btn-primary', accion: () => _confirmarCobro(cerrar, subtotal) },
     ],
   });
 
   // Actualización reactiva del total cuando cambia el descuento
+  // Usamos setTimeout para esperar a que el DOM del modal esté disponible
   setTimeout(() => {
     const inputDesc = document.getElementById('cobro-descuento');
     const totalDisp = document.getElementById('cobro-total-display');
     if (inputDesc && totalDisp) {
       inputDesc.addEventListener('input', () => {
-        const desc  = parseFloat(inputDesc.value) || 0;
+        const desc  = Math.max(0, parseFloat(inputDesc.value) || 0);
         const total = Math.max(0, subtotal - desc);
         totalDisp.textContent = formatMXN(total);
       });
     }
-  }, 50);
+  }, 80);
 }
 
 async function _confirmarCobro(cerrar, subtotal) {
-  const descInput = document.getElementById('cobro-descuento');
+  const descInput  = document.getElementById('cobro-descuento');
   const fiadoInput = document.getElementById('cobro-fiado');
 
   const descuento = Math.max(0, parseFloat(descInput?.value) || 0);
@@ -277,8 +279,14 @@ async function _confirmarCobro(cerrar, subtotal) {
     return;
   }
 
-  const total = subtotal - descuento;
+  const total  = subtotal - descuento;
   const pedido = store.getState().pedidoActual;
+
+  if (pedido.length === 0) {
+    toast.error('El pedido está vacío.');
+    cerrar();
+    return;
+  }
 
   // Construir el objeto venta (sin id — db.js lo genera)
   const venta = {
@@ -292,7 +300,7 @@ async function _confirmarCobro(cerrar, subtotal) {
     motivoCancelacion: null,
   };
 
-  // Construir los detalles (snapshot de precio al momento de la venta)
+  // Construir los detalles (snapshot del precio al momento de la venta)
   const detalles = pedido.map(item => ({
     productoId:      item.productoId,
     nombreProducto:  item.nombre,

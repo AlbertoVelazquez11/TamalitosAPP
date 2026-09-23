@@ -10,7 +10,7 @@
  *  - Módulos ES6 incluidos en el precacheo
  */
 
-const CACHE_NAME = 'tamalitos-v5';
+const CACHE_NAME = 'tamalitos-v6';
 
 // Recursos del app shell que se precachean en la instalación.
 // El SW debe poder servir la app completa sin ninguna petición a la red.

@@ -154,6 +154,17 @@
   padding-bottom: 0 !important;
 }
 
+/* CRITICAL FIX: el .view (div creado por el router) necesita height:100%
+   para que .pos-view (su hijo) pueda hacer height:100% y funcionar.
+   Sin esto, el layout de dos paneles no puede calcularse. */
+#app.pos-active > .view {
+  height: 100%;
+  min-height: unset;   /* Override the default min-height:100% */
+  padding: 0;          /* El POS maneja su propio espaciado */
+  max-width: none;     /* Usar todo el ancho disponible */
+  margin: 0;
+}
+
 .pos-view {
   display: flex;
   flex-direction: column;
@@ -165,7 +176,24 @@
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: var(--space-1) 0 var(--space-3);
+  padding: var(--space-2) var(--space-4) var(--space-3);
+}
+
+/* Feedback visual al pulsar un botón de producto (animación táctil) */
+.product-btn--added {
+  background-color: var(--color-primary-light) !important;
+  border-color: var(--color-primary) !important;
+  transform: scale(0.94);
+}
+
+/* Grilla táctil de productos */
+/* POS header: debe compensar el padding del safe-area-top que #app.pos-active elimina */
+.pos-header {
+  padding-top: max(var(--space-4), var(--safe-top));
+  padding-left: max(var(--space-4), var(--safe-left));
+  padding-right: max(var(--space-4), var(--safe-right));
+  padding-bottom: var(--space-3);
+  flex-shrink: 0;
 }
 
 /* Grilla táctil de productos */
@@ -176,6 +204,7 @@
   padding-bottom: var(--space-3);
   /* En iPad mostrar 3 columnas */
 }
+
 
 @media (min-width: 480px) {
   .product-grid {
