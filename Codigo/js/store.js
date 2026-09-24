@@ -263,6 +263,7 @@ function _configDefault() {
     version:          '1.0.0',
     tema:             'light',      // 'light' | 'dark'
     ultimaExportacion: null,
+    logo:             null,         // Base64 string para el logo
   };
 }
 

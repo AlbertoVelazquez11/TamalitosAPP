@@ -18,10 +18,24 @@ export async function render(container) {
         <h1 class="view-header__title">Configuración</h1>
       </div>
 
-      <!-- Nombre del negocio -->
+      <!-- Nombre y Logo del negocio -->
       <div class="config-section">
         <p class="config-section-title">Negocio</p>
-        <div class="form-group">
+        
+        <div class="logo-upload-container">
+           <div class="home-logo config-logo-preview" id="config-logo-preview" aria-hidden="true">
+             ${config?.logo ? `<img src="${config.logo}" alt="Logo" class="custom-logo">` : '🫔'}
+           </div>
+           <div class="logo-actions">
+             <label for="input-logo" class="btn btn-secondary btn-sm" style="cursor: pointer; display: inline-block;">
+               📸 Cambiar Logo
+             </label>
+             <input type="file" id="input-logo" accept="image/png, image/jpeg, image/webp" style="display: none;">
+             ${config?.logo ? `<button class="btn btn-ghost btn-sm" id="btn-borrar-logo" style="color: var(--color-danger);">Borrar</button>` : ''}
+           </div>
+        </div>
+
+        <div class="form-group" style="margin-top: var(--space-4);">
           <label class="form-label" for="input-nombre">Nombre del Negocio</label>
           <input
             id="input-nombre"
@@ -33,7 +47,7 @@ export async function render(container) {
           >
         </div>
         <button class="btn btn-primary btn-block" id="btn-guardar-nombre">
-          Guardar Nombre
+          Guardar Cambios
         </button>
       </div>
 
@@ -81,6 +95,53 @@ export async function render(container) {
     </div>
   `;
 
+  // Manejar subida de logo
+  const inputLogo = container.querySelector('#input-logo');
+  if (inputLogo) {
+    inputLogo.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      // Limitar tamaño a 2MB para IndexedDB/localStorage
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error('El logo debe pesar menos de 2MB');
+        inputLogo.value = '';
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = event.target.result;
+        guardarConfig({ logo: base64 });
+        
+        // Actualizar preview local
+        const preview = container.querySelector('#config-logo-preview');
+        if (preview) {
+           preview.innerHTML = `<img src="${base64}" alt="Logo" class="custom-logo">`;
+        }
+        toast.success('Logo actualizado');
+        
+        // Refrescar la vista para mostrar el botón de borrar si no estaba
+        setTimeout(() => render(container), 300);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Manejar borrado de logo
+  const btnBorrarLogo = container.querySelector('#btn-borrar-logo');
+  if (btnBorrarLogo) {
+    btnBorrarLogo.addEventListener('click', () => {
+      guardarConfig({ logo: null });
+      const preview = container.querySelector('#config-logo-preview');
+      if (preview) {
+         preview.innerHTML = '🫔';
+      }
+      toast.info('Logo eliminado');
+      setTimeout(() => render(container), 300);
+    });
+  }
+
   // Guardar nombre del negocio
   container.querySelector('#btn-guardar-nombre').addEventListener('click', () => {
     const input = container.querySelector('#input-nombre');
@@ -90,7 +151,7 @@ export async function render(container) {
       return;
     }
     guardarConfig({ nombreNegocio: nombre });
-    toast.success('Nombre guardado.');
+    toast.success('Cambios guardados.');
   });
 
   // Toggle de tema

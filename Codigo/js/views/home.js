@@ -33,7 +33,9 @@ export async function render(container) {
 
       <!-- Hero: Logo + Nombre del negocio -->
       <div class="home-hero">
-        <div class="home-logo" aria-hidden="true">🫔</div>
+        <div class="home-logo" aria-hidden="true" id="home-logo-container">
+          ${config?.logo ? `<img src="${config.logo}" alt="Logo" class="custom-logo">` : '🫔'}
+        </div>
         <div>
           <h1 class="home-business-name" id="home-business-name">
             ${esc(config?.nombreNegocio ?? 'Mi Negocio')}
@@ -70,10 +72,15 @@ export async function render(container) {
   container.querySelector('#btn-insumos')
     .addEventListener('click', () => navegar('insumos-costos'));
 
-  // ── Suscripción reactiva al nombre del negocio ─────────
+  // ── Suscripción reactiva al nombre y logo del negocio ─────────
   const unsub = store.subscribe('config', (config) => {
     const el = container.querySelector('#home-business-name');
     if (el) el.textContent = config?.nombreNegocio ?? 'Mi Negocio';
+    
+    const logoContainer = container.querySelector('#home-logo-container');
+    if (logoContainer) {
+       logoContainer.innerHTML = config?.logo ? `<img src="${config.logo}" alt="Logo" class="custom-logo">` : '🫔';
+    }
   });
 
   // Devolver función de limpieza

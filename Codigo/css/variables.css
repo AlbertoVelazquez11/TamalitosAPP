@@ -3,97 +3,114 @@
    Modo claro (default) + Modo oscuro
    ============================================================ */
 
-/* ── MODO CLARO (default) ─────────────────────────────────── */
+/* ── MODO CLARO — Paleta "Blush & Sky" ────────────────────── */
+/*
+   Colores definidos por el usuario:
+   Background principal : #A2D2FF  (azul pastel cielo)
+   Pantallas secundarias: #BDE0FE  (azul pastel suave)
+   Detalles 1           : #FFAFCC  (rosa chicle)
+   Detalles 2           : #FFC8DD  (rosa bebe)
+   Detalles 3           : #CDB4DB  (lila suave)
+*/
 :root,
 [data-theme="light"] {
   /* Fondos */
-  --color-bg:           #f8fafc;
-  --color-surface:      #ffffff;
-  --color-surface-alt:  #f1f5f9;
-  --color-surface-raised: #ffffff;
+  --color-bg:             #A2D2FF;   /* Fondo principal — azul pastel */
+  --color-surface:        #BDE0FE;   /* Tarjetas, paneles, pantallas secundarias */
+  --color-surface-alt:    #FFC8DD;   /* Superficie alterna — rosa bebé */
+  --color-surface-raised: #ffffff;   /* Modales, toasts (sobre todo) */
 
   /* Bordes */
-  --color-border:       #e2e8f0;
-  --color-border-strong:#cbd5e1;
+  --color-border:         rgba(60, 90, 160, 0.20);
+  --color-border-strong:  rgba(60, 90, 160, 0.38);
 
-  /* Textos */
-  --color-text:         #0f172a;
-  --color-text-muted:   #64748b;
-  --color-text-inverse: #f8fafc;
+  /* Textos — oscuros con tinte violeta para contraste sobre pasteles */
+  --color-text:           #1e0f2e;   /* Casi negro con tinte morado */
+  --color-text-muted:     #5e456f;   /* Gris violáceo para texto secundario */
+  --color-text-inverse:   #1e0f2e;   /* Texto sobre botones primarios (fondo rosa) */
 
-  /* Marca principal */
-  --color-primary:      #d97706;   /* Ámbar cálido — evoca tamales */
-  --color-primary-dark: #b45309;
-  --color-primary-light:#fef3c7;
-  --color-primary-text: #ffffff;
+  /* Marca principal — Detalles 1 (rosa chicle) para CTAs */
+  --color-primary:        #FFAFCC;
+  --color-primary-dark:   #e891af;   /* ~12% más oscuro para estados active/hover */
+  --color-primary-light:  #FFC8DD;   /* Detalles 2 para fondos sutiles del primario */
+  --color-primary-text:   #1e0f2e;   /* Texto sobre el botón primario */
+
+  /* Color de acento — Detalles 3 (lila) */
+  --color-accent:         #CDB4DB;
+  --color-accent-dark:    #b89dc8;
+  --color-accent-light:   rgba(205, 180, 219, 0.30);
 
   /* Estados semánticos */
-  --color-success:      #059669;
-  --color-success-bg:   #d1fae5;
-  --color-danger:       #dc2626;
-  --color-danger-bg:    #fee2e2;
-  --color-warning:      #d97706;
-  --color-warning-bg:   #fef3c7;
-  --color-info:         #2563eb;
-  --color-info-bg:      #dbeafe;
+  --color-success:        #1a7a4a;
+  --color-success-bg:     rgba(26, 122, 74, 0.12);
+  --color-danger:         #c0334d;
+  --color-danger-bg:      rgba(192, 51, 77, 0.12);
+  --color-warning:        #b86e0a;
+  --color-warning-bg:     rgba(184, 110, 10, 0.12);
+  --color-info:           #1a60b8;
+  --color-info-bg:        rgba(26, 96, 184, 0.12);
 
   /* Pending / Fiado */
-  --color-pending:      #7c3aed;
-  --color-pending-bg:   #ede9fe;
+  --color-pending:        #7040a0;
+  --color-pending-bg:     rgba(112, 64, 160, 0.14);
 
-  /* Sombras */
-  --shadow-sm:  0 1px 2px rgba(0,0,0,0.08);
-  --shadow-md:  0 4px 12px rgba(0,0,0,0.10);
-  --shadow-lg:  0 8px 24px rgba(0,0,0,0.12);
+  /* Sombras — tono azul frío acorde al fondo */
+  --shadow-sm:  0 1px 3px  rgba(30, 60, 140, 0.12);
+  --shadow-md:  0 4px 12px rgba(30, 60, 140, 0.16);
+  --shadow-lg:  0 8px 28px rgba(30, 60, 140, 0.22);
 
   /* Overlay de modales */
-  --color-overlay: rgba(15, 23, 42, 0.50);
+  --color-overlay: rgba(10, 5, 30, 0.55);
 
   /* Separadores */
-  --color-divider: #e2e8f0;
+  --color-divider: rgba(60, 90, 160, 0.14);
 
-  /* Icono del engrane en Home */
-  --color-icon-muted: #94a3b8;
+  /* Icono sutil (engrane, etc.) */
+  --color-icon-muted: #7a8ab8;
 }
 
-/* ── MODO OSCURO ──────────────────────────────────────────── */
+/* ── MODO OSCURO — Complemento nocturno de la paleta ─────── */
 [data-theme="dark"] {
-  --color-bg:           #0f172a;
-  --color-surface:      #1e293b;
-  --color-surface-alt:  #334155;
-  --color-surface-raised:#1e293b;
+  --color-bg:             #160924;   /* Fondo principal — morado muy oscuro */
+  --color-surface:        #22103a;   /* Tarjetas */
+  --color-surface-alt:    #301550;   /* Superficie alterna */
+  --color-surface-raised: #22103a;   /* Modales */
 
-  --color-border:       #334155;
-  --color-border-strong:#475569;
+  --color-border:         rgba(205, 180, 219, 0.18);
+  --color-border-strong:  rgba(205, 180, 219, 0.32);
 
-  --color-text:         #f8fafc;
-  --color-text-muted:   #94a3b8;
-  --color-text-inverse: #0f172a;
+  --color-text:           #f0e6fa;
+  --color-text-muted:     #b89dc8;
+  --color-text-inverse:   #1e0f2e;
 
-  --color-primary:      #f59e0b;
-  --color-primary-dark: #d97706;
-  --color-primary-light:#78350f;
-  --color-primary-text: #0f172a;
+  --color-primary:        #FFAFCC;
+  --color-primary-dark:   #e891af;
+  --color-primary-light:  rgba(255, 175, 204, 0.20);
+  --color-primary-text:   #1e0f2e;
 
-  --color-success:      #10b981;
-  --color-success-bg:   rgba(16,185,129,0.15);
-  --color-danger:       #ef4444;
-  --color-danger-bg:    rgba(239,68,68,0.15);
-  --color-warning:      #f59e0b;
-  --color-warning-bg:   rgba(245,158,11,0.15);
-  --color-info:         #38bdf8;
-  --color-info-bg:      rgba(56,189,248,0.15);
+  --color-accent:         #CDB4DB;
+  --color-accent-dark:    #b89dc8;
+  --color-accent-light:   rgba(205, 180, 219, 0.20);
 
-  --color-pending:      #a78bfa;
-  --color-pending-bg:   rgba(167,139,250,0.15);
+  --color-success:        #2ecc8a;
+  --color-success-bg:     rgba(46, 204, 138, 0.15);
+  --color-danger:         #f06e85;
+  --color-danger-bg:      rgba(240, 110, 133, 0.15);
+  --color-warning:        #f0a855;
+  --color-warning-bg:     rgba(240, 168, 85, 0.15);
+  --color-info:           #60b8ff;
+  --color-info-bg:        rgba(96, 184, 255, 0.15);
 
-  --shadow-sm:  0 1px 2px rgba(0,0,0,0.30);
-  --shadow-md:  0 4px 12px rgba(0,0,0,0.40);
-  --shadow-lg:  0 8px 24px rgba(0,0,0,0.50);
+  --color-pending:        #c4a0e8;
+  --color-pending-bg:     rgba(196, 160, 232, 0.15);
 
-  --color-overlay: rgba(0, 0, 0, 0.65);
-  --color-divider: #334155;
-  --color-icon-muted: #64748b;
+  --shadow-sm:  0 1px 3px  rgba(0, 0, 0, 0.40);
+  --shadow-md:  0 4px 12px rgba(0, 0, 0, 0.55);
+  --shadow-lg:  0 8px 28px rgba(0, 0, 0, 0.70);
+
+  --color-overlay: rgba(0, 0, 0, 0.70);
+  --color-divider: rgba(205, 180, 219, 0.14);
+  --color-icon-muted: #7060a0;
 }
 
 /* ── TOKENS INVARIANTES (mismo valor en ambos modos) ───────── */
@@ -160,4 +177,3 @@
   --z-modal:   300;
   --z-toast:   400;
 }
-
