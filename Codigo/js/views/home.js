@@ -34,11 +34,11 @@ export async function render(container) {
       <!-- Hero: Logo + Nombre del negocio -->
       <div class="home-hero">
         <div class="home-logo" aria-hidden="true" id="home-logo-container">
-          ${config?.logo ? `<img src="${config.logo}" alt="Logo" class="custom-logo">` : '🫔'}
+          ${config?.logo ? `<img src="${config.logo}" alt="Logo" class="custom-logo">` : '<img src="/icons/logo.png" alt="Logo" class="custom-logo">'}
         </div>
         <div>
           <h1 class="home-business-name" id="home-business-name">
-            ${esc(config?.nombreNegocio ?? 'Mi Negocio')}
+            ${esc(config?.nombreNegocio && config.nombreNegocio !== 'Mi Negocio' ? config.nombreNegocio : 'La Mari')}
           </h1>
           <p class="home-tagline text-muted">Administración de Ventas</p>
         </div>
@@ -75,11 +75,11 @@ export async function render(container) {
   // ── Suscripción reactiva al nombre y logo del negocio ─────────
   const unsub = store.subscribe('config', (config) => {
     const el = container.querySelector('#home-business-name');
-    if (el) el.textContent = config?.nombreNegocio ?? 'Mi Negocio';
+    if (el) el.textContent = config?.nombreNegocio && config.nombreNegocio !== 'Mi Negocio' ? config.nombreNegocio : 'La Mari';
     
     const logoContainer = container.querySelector('#home-logo-container');
     if (logoContainer) {
-       logoContainer.innerHTML = config?.logo ? `<img src="${config.logo}" alt="Logo" class="custom-logo">` : '🫔';
+       logoContainer.innerHTML = config?.logo ? `<img src="${config.logo}" alt="Logo" class="custom-logo">` : '<img src="/icons/logo.png" alt="Logo" class="custom-logo">';
     }
   });
 

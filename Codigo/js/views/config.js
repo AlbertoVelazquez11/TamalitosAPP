@@ -24,7 +24,7 @@ export async function render(container) {
         
         <div class="logo-upload-container">
            <div class="home-logo config-logo-preview" id="config-logo-preview" aria-hidden="true">
-             ${config?.logo ? `<img src="${config.logo}" alt="Logo" class="custom-logo">` : '🫔'}
+             ${config?.logo ? `<img src="${config.logo}" alt="Logo" class="custom-logo">` : '<img src="/icons/logo.png" alt="Logo" class="custom-logo">'}
            </div>
            <div class="logo-actions">
              <label for="input-logo" class="btn btn-secondary btn-sm" style="cursor: pointer; display: inline-block;">
@@ -135,7 +135,7 @@ export async function render(container) {
       guardarConfig({ logo: null });
       const preview = container.querySelector('#config-logo-preview');
       if (preview) {
-         preview.innerHTML = '🫔';
+         preview.innerHTML = '<img src="/icons/logo.png" alt="Logo" class="custom-logo">';
       }
       toast.info('Logo eliminado');
       setTimeout(() => render(container), 300);

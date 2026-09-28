@@ -10,7 +10,7 @@
  *  - Módulos ES6 incluidos en el precacheo
  */
 
-const CACHE_NAME = 'tamalitos-v8';
+const CACHE_NAME = 'tamalitos-v9';
 
 // Recursos del app shell que se precachean en la instalación.
 // El SW debe poder servir la app completa sin ninguna petición a la red.
@@ -52,7 +52,8 @@ const ASSETS_TO_CACHE = [
   './icons/apple-touch-icon.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
-  './icons/icon.svg',
+  './icons/logo.png',
+  './icons/favicon.ico',
 ];
 
 // ══════════════════════════════════════════════════════════
