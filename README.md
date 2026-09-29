@@ -51,6 +51,24 @@ TamalitosAPP/
 - [Fase 2 — Arquitectura, Modelo de Datos y Design System](Documentacion/fase2_arquitectura.md)
 - [Fase 3 — Épicas e Historias de Usuario (Gherkin)](Documentacion/fase3_historias_usuario.md)
 - [Fase 4 — Plan de Trabajo en 5 Sprints](Documentacion/fase4_plan_trabajo.md)
+- [Sprint 5 — Auditoría iOS, QA y Lanzamiento](Documentacion/sprint5_qa.md)
+
+---
+
+## ✅ Estado del Proyecto
+
+| Sprint | Alcance | Estado |
+|---|---|---|
+| 1 | Core PWA: shell, IndexedDB, router, store, Home | ✅ |
+| 2 | Catálogos: productos, insumos, swipe-to-delete | ✅ |
+| 3 | POS, costos, historial básico | ✅ |
+| 4 | Historial (filtros, utilidad, cancelación 24h), exportación CSV y respaldo JSON | ✅ |
+| 5 | Pulido iOS, QA y lanzamiento v1.0.0 | 🔄 En curso |
+
+### 📤 Exportación y respaldo (Sprint 4)
+- **CSV** de ventas y gastos filtrado por día, semana, mes o año (Web Share API + fallback de descarga).
+- **Respaldo completo** en JSON con todas las tablas de IndexedDB.
+- **Importación** de respaldo validado, con resumen previo y confirmación.
 
 ---
 

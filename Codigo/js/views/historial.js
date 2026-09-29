@@ -15,6 +15,7 @@ import { esc, formatMXN, formatFecha, formatHora, hoy } from '../utils.js';
 import { navegarAtras }    from '../router.js';
 
 const VENTANA_CANCELACION_MS = 24 * 60 * 60 * 1000;
+const PAGE_SIZE              = 50; // Paginación "cargar más" para listas largas (Sprint 5 — 5.3)
 
 /**
  * Indica si una venta aún puede cancelarse (menos de 24 h desde su creación).
@@ -134,11 +135,37 @@ async function _renderLista(container, ventas, fecha) {
 
   listaEl.innerHTML = '';
 
-  for (const venta of ventas) {
-    const detalles = await getDetallesByVentaId(venta.id);
-    const card = _crearTarjetaVenta(venta, detalles, container);
-    listaEl.appendChild(card);
+  let mostradas = 0;
+
+  async function _renderPagina() {
+    const lote = ventas.slice(mostradas, mostradas + PAGE_SIZE);
+    if (lote.length === 0) return;
+
+    // Consultar detalles en paralelo para evitar la cascada secuencial de transacciones
+    const detallesLote = await Promise.all(
+      lote.map(v => getDetallesByVentaId(v.id))
+    );
+
+    lote.forEach((venta, i) => {
+      listaEl.appendChild(_crearTarjetaVenta(venta, detallesLote[i], container));
+    });
+
+    mostradas += lote.length;
+
+    // Quitar el botón "Cargar más" anterior antes de decidir si crear otro
+    listaEl.querySelector('.btn-cargar-mas')?.remove();
+
+    if (mostradas < ventas.length) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-secondary btn-block btn-cargar-mas';
+      btn.textContent = `Cargar más (${mostradas} de ${ventas.length})`;
+      btn.addEventListener('click', _renderPagina);
+      listaEl.appendChild(btn);
+    }
   }
+
+  await _renderPagina();
 }
 
 function _crearTarjetaVenta(venta, detalles, container) {
