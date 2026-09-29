@@ -63,7 +63,10 @@ TamalitosAPP/
 | 2 | Catálogos: productos, insumos, swipe-to-delete | ✅ |
 | 3 | POS, costos, historial básico | ✅ |
 | 4 | Historial (filtros, utilidad, cancelación 24h), exportación CSV y respaldo JSON | ✅ |
-| 5 | Pulido iOS, QA y lanzamiento v1.0.0 | 🔄 En curso |
+| 5 | Pulido iOS, QA y lanzamiento v1.0.0 | ✅ |
+
+> **v1.0.0 finalizada.** El desarrollo de nuevas funciones y ajustes continúa
+> en la rama `develop` (versión **2.0.0**).
 
 ### 📤 Exportación y respaldo (Sprint 4)
 - **CSV** de ventas y gastos filtrado por día, semana, mes o año (Web Share API + fallback de descarga).
