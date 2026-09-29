@@ -1,16 +1,14 @@
 /**
- * sw.js — Service Worker v3 — TamalitosAPP
+ * sw.js — Service Worker — TamalitosAPP
  *
  * Estrategia: Cache-First para el app shell + Stale-While-Revalidate
  * para mantener los assets actualizados en segundo plano.
  *
- * Cambios respecto a versiones anteriores:
- *  - Nombre de caché actualizado a 'tamalitos-v3'
- *  - ASSETS_TO_CACHE actualizado con la nueva estructura SPA
- *  - Módulos ES6 incluidos en el precacheo
+ * Cada nueva versión debe incrementar CACHE_NAME para forzar la
+ * limpieza de cachés obsoletas en los clientes.
  */
 
-const CACHE_NAME = 'tamalitos-v9';
+const CACHE_NAME = 'tamalitos-v10';
 
 // Recursos del app shell que se precachean en la instalación.
 // El SW debe poder servir la app completa sin ninguna petición a la red.
@@ -32,11 +30,13 @@ const ASSETS_TO_CACHE = [
   './js/db.js',
   './js/utils.js',
   './js/gestures.js',
+  './js/export.js',
 
   // JS — Components
   './js/components/toast.js',
   './js/components/modal.js',
   './js/components/swipe-item.js',
+  './js/components/date-filter.js',
 
   // JS — Views
   './js/views/home.js',
@@ -61,7 +61,7 @@ const ASSETS_TO_CACHE = [
 // ══════════════════════════════════════════════════════════
 
 self.addEventListener('install', (event) => {
-  console.log('[SW v3] Instalando y precacheando app shell...');
+  console.log('[SW] Instalando y precacheando app shell...');
   self.skipWaiting(); // No esperar a que se cierren pestañas anteriores
 
   event.waitUntil(
@@ -70,14 +70,14 @@ self.addEventListener('install', (event) => {
       const resultados = await Promise.allSettled(
         ASSETS_TO_CACHE.map(url =>
           cache.add(url).catch(err => {
-            console.warn(`[SW v3] No se pudo cachear: ${url}`, err.message);
+            console.warn(`[SW] No se pudo cachear: ${url}`, err.message);
           })
         )
       );
 
       const ok     = resultados.filter(r => r.status === 'fulfilled').length;
       const fallos = resultados.filter(r => r.status === 'rejected').length;
-      console.log(`[SW v3] Precacheo: ${ok} ok, ${fallos} fallos.`);
+      console.log(`[SW] Precacheo: ${ok} ok, ${fallos} fallos.`);
     })
   );
 });
@@ -87,20 +87,20 @@ self.addEventListener('install', (event) => {
 // ══════════════════════════════════════════════════════════
 
 self.addEventListener('activate', (event) => {
-  console.log('[SW v3] Activando y limpiando cachés antiguas...');
+  console.log('[SW] Activando y limpiando cachés antiguas...');
 
   event.waitUntil(
     caches.keys().then((nombres) =>
       Promise.all(
         nombres.map((nombre) => {
           if (nombre !== CACHE_NAME) {
-            console.log('[SW v3] Eliminando caché obsoleta:', nombre);
+            console.log('[SW] Eliminando caché obsoleta:', nombre);
             return caches.delete(nombre);
           }
         })
       )
     ).then(() => {
-      console.log('[SW v3] Reclamando control de clientes activos.');
+      console.log('[SW] Reclamando control de clientes activos.');
       return self.clients.claim();
     })
   );

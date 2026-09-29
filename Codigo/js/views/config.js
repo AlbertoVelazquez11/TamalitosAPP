@@ -6,7 +6,14 @@
 import { store, guardarConfig } from '../store.js';
 import { navegar, navegarAtras } from '../router.js';
 import { toast }                 from '../components/toast.js';
+import { modal }                 from '../components/modal.js';
 import { esc }                   from '../utils.js';
+import {
+  exportarCSV,
+  exportarRespaldoJSON,
+  validarRespaldo,
+  restaurarRespaldo,
+} from '../export.js';
 
 export async function render(container) {
   const { config } = store.getState();
@@ -80,12 +87,16 @@ export async function render(container) {
           Tus datos están almacenados localmente en este dispositivo.
           Exporta regularmente para tener un respaldo.
         </p>
-        <button class="btn btn-secondary btn-block" id="btn-exportar" disabled>
-          📤 Exportar Datos (Sprint 4)
+        <button class="btn btn-secondary btn-block" id="btn-exportar">
+          📤 Exportar Datos (CSV)
         </button>
-        <button class="btn btn-ghost btn-block" id="btn-respaldo" disabled>
-          🔒 Exportar Respaldo Completo (Sprint 4)
+        <button class="btn btn-secondary btn-block" id="btn-respaldo">
+          🔒 Exportar Respaldo Completo
         </button>
+        <button class="btn btn-ghost btn-block" id="btn-importar">
+          📥 Importar Respaldo
+        </button>
+        <input type="file" id="input-importar" accept=".json,application/json" style="display: none;">
       </div>
 
       <!-- Versión -->
@@ -166,4 +177,133 @@ export async function render(container) {
 
   container.querySelector('#btn-back').addEventListener('click', navegarAtras);
   container.querySelector('#btn-productos').addEventListener('click', () => navegar('productos'));
+
+  // ── Exportar Datos (CSV) ──────────────────────────────────
+  container.querySelector('#btn-exportar').addEventListener('click', _abrirModalExportar);
+
+  // ── Exportar Respaldo Completo (JSON) ─────────────────────
+  container.querySelector('#btn-respaldo').addEventListener('click', async () => {
+    try {
+      const resultado = await exportarRespaldoJSON();
+      if (resultado?.cancelado) return;
+      toast.success('Respaldo generado y listo para compartir.');
+    } catch (e) {
+      console.error('[Config] Error al exportar respaldo:', e);
+      toast.error('No se pudo generar el respaldo.');
+    }
+  });
+
+  // ── Importar Respaldo ─────────────────────────────────────
+  const inputImportar = container.querySelector('#input-importar');
+  container.querySelector('#btn-importar').addEventListener('click', () => inputImportar.click());
+  inputImportar.addEventListener('change', (e) => {
+    const file = e.target.files?.[0];
+    inputImportar.value = '';
+    if (file) _manejarImportarRespaldo(file);
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// EXPORTACIÓN CSV
+// ══════════════════════════════════════════════════════════
+
+function _abrirModalExportar() {
+  const cerrar = modal.abrir({
+    titulo: 'Exportar Datos (CSV)',
+    contenido: `
+      <div class="form-group">
+        <label class="form-label" for="export-periodo">Período</label>
+        <select id="export-periodo" class="form-select">
+          <option value="dia">Hoy</option>
+          <option value="semana">Esta semana</option>
+          <option value="mes" selected>Este mes</option>
+          <option value="anio">Este año</option>
+        </select>
+      </div>
+      <p class="text-sm text-muted">
+        Se generará un archivo CSV compatible con Excel y Google Sheets.
+      </p>
+    `,
+    botones: [
+      { texto: 'Cancelar', clase: 'btn-ghost', accion: () => cerrar() },
+      { texto: '📊 Exportar Ventas', clase: 'btn-primary', accion: () => _exportar('ventas', cerrar) },
+      { texto: '💸 Exportar Gastos', clase: 'btn-secondary', accion: () => _exportar('gastos', cerrar) },
+    ],
+  });
+}
+
+async function _exportar(tipo, cerrar) {
+  const periodo  = document.getElementById('export-periodo')?.value || 'mes';
+  const resultado = await exportarCSV(tipo, periodo);
+
+  if (resultado.vacio) {
+    toast.info('No hay datos para exportar en este período.');
+    return;
+  }
+  if (resultado.cancelado) return;
+
+  cerrar();
+  const etiqueta = tipo === 'ventas' ? 'Ventas' : 'Gastos';
+  toast.success(`${etiqueta} exportado${resultado.registros ? ` (${resultado.registros} registros)` : ''}.`);
+}
+
+// ══════════════════════════════════════════════════════════
+// IMPORTACIÓN DE RESPALDO
+// ══════════════════════════════════════════════════════════
+
+async function _manejarImportarRespaldo(file) {
+  let data;
+  try {
+    const texto = await file.text();
+    try {
+      data = JSON.parse(texto);
+    } catch {
+      toast.error('El archivo seleccionado no es un JSON válido.');
+      return;
+    }
+  } catch (e) {
+    console.error('[Config] Error al leer el archivo de respaldo:', e);
+    toast.error('No se pudo leer el archivo seleccionado.');
+    return;
+  }
+
+  const validacion = validarRespaldo(data);
+  if (!validacion.valido) {
+    toast.error(validacion.error);
+    return;
+  }
+
+  const r = validacion.resumen;
+  const cerrar = modal.abrir({
+    titulo: 'Importar Respaldo',
+    contenido: `
+      <p class="text-sm text-muted">El respaldo contiene:</p>
+      <div class="cobro-summary" style="margin-top: var(--space-2);">
+        <div class="cobro-item-row"><span>Productos</span><span>${r.productos}</span></div>
+        <div class="cobro-item-row"><span>Insumos</span><span>${r.insumos}</span></div>
+        <div class="cobro-item-row"><span>Ventas</span><span>${r.ventas}</span></div>
+        <div class="cobro-item-row"><span>Gastos</span><span>${r.costos}</span></div>
+      </div>
+      <p class="text-sm" style="color: var(--color-danger); margin-top: var(--space-3);">
+        ⚠️ Se reemplazarán los datos actuales de este dispositivo.
+      </p>
+    `,
+    botones: [
+      { texto: 'Cancelar', clase: 'btn-ghost', accion: () => cerrar() },
+      {
+        texto: 'Restaurar',
+        clase: 'btn-danger',
+        accion: async () => {
+          try {
+            await restaurarRespaldo(data);
+            cerrar();
+            toast.success('Respaldo restaurado correctamente.');
+          } catch (e) {
+            console.error('[Config] Error al restaurar respaldo:', e);
+            toast.error('No se pudo restaurar el respaldo.');
+          }
+        },
+      },
+    ],
+  });
 }

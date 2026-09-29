@@ -1,19 +1,31 @@
 /**
- * historial.js — Historial de Ventas (Sprint 3 — versión básica)
+ * historial.js — Historial de Ventas (Sprint 4)
  *
- * HU-050: Listado de ventas cobradas
- * HU-051: Priorizar ventas del día actual
- *
- * Muestra las ventas del día actual por defecto.
- * Sprint 4 agregará: filtros por semana/mes/año, resumen de utilidad,
- * cancelación de ventas y exportación CSV.
+ * HU-050: Listado de ventas + resumen diario (ventas, gastos y utilidad)
+ * HU-051: Filtro por fecha con input date nativo
+ * HU-052: Detalle de venta (desglose de productos inline)
+ * HU-053: Cancelación de venta solo dentro de las últimas 24 h
  */
 
-import { getVentasPorFecha, getDetallesByVentaId, put } from '../db.js';
+import { getVentasPorFecha, getCostosPorFecha, getDetallesByVentaId, put } from '../db.js';
+import { crearDateFilter } from '../components/date-filter.js';
 import { modal }           from '../components/modal.js';
 import { toast }           from '../components/toast.js';
 import { esc, formatMXN, formatFecha, formatHora, hoy } from '../utils.js';
 import { navegarAtras }    from '../router.js';
+
+const VENTANA_CANCELACION_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Indica si una venta aún puede cancelarse (menos de 24 h desde su creación).
+ * HU-053.
+ */
+function _puedeCancelarse(venta) {
+  if (!venta?.creadoEn) return false;
+  const creado = new Date(venta.creadoEn).getTime();
+  if (Number.isNaN(creado)) return false;
+  return (Date.now() - creado) < VENTANA_CANCELACION_MS;
+}
 
 export async function render(container) {
   container.innerHTML = `
@@ -25,8 +37,7 @@ export async function render(container) {
 
       <!-- Selector de fecha -->
       <div style="display:flex; gap: var(--space-2); align-items: center; margin-bottom: var(--space-4);">
-        <input type="date" id="filtro-fecha" class="form-input" value="${hoy()}"
-               max="${hoy()}" style="flex:1;">
+        <div id="filtro-fecha-wrap" style="flex:1;"></div>
         <button class="btn btn-secondary btn-sm" id="btn-hoy">Hoy</button>
       </div>
 
@@ -41,14 +52,16 @@ export async function render(container) {
 
   container.querySelector('#btn-back').addEventListener('click', navegarAtras);
 
+  // Componente de filtro por fecha (input date nativo)
+  const dateFilter = crearDateFilter({
+    value: hoy(),
+    onChange: () => _cargarVentas(container),
+  });
+  container.querySelector('#filtro-fecha-wrap').appendChild(dateFilter.elemento);
+
   // Volver a hoy
   container.querySelector('#btn-hoy').addEventListener('click', () => {
-    container.querySelector('#filtro-fecha').value = hoy();
-    _cargarVentas(container);
-  });
-
-  // Cambio de fecha
-  container.querySelector('#filtro-fecha').addEventListener('change', () => {
+    dateFilter.value = hoy();
     _cargarVentas(container);
   });
 
@@ -61,34 +74,47 @@ export async function render(container) {
 // ══════════════════════════════════════════════════════════
 
 async function _cargarVentas(container) {
-  const fecha  = container.querySelector('#filtro-fecha').value;
+  const fecha  = container.querySelector('.date-filter__input')?.value || hoy();
   const ventas = await getVentasPorFecha(fecha, fecha);
 
-  _renderResumen(container, ventas);
+  await _renderResumen(container, ventas, fecha);
   await _renderLista(container, ventas, fecha);
 }
 
-function _renderResumen(container, ventas) {
+async function _renderResumen(container, ventas, fecha) {
   const resumenEl = container.querySelector('#resumen-dia');
   if (!resumenEl) return;
 
-  const cobradas  = ventas.filter(v => v.estado === 'cobrada');
-  const total     = cobradas.reduce((s, v) => s + (v.total || 0), 0);
+  const cobradas   = ventas.filter(v => v.estado === 'cobrada');
+  const total      = cobradas.reduce((s, v) => s + (v.total || 0), 0);
   const pendientes = cobradas.filter(v => v.estadoPago === 'pendiente').length;
+
+  // Gastos del día para calcular la utilidad bruta (HU-050)
+  const costos   = await getCostosPorFecha(fecha, fecha);
+  const gastos   = costos.reduce((s, c) => s + (c.monto || 0), 0);
+  const utilidad = total - gastos;
 
   resumenEl.innerHTML = `
     <div class="summary-card">
       <span class="summary-card__value">${cobradas.length}</span>
       <span class="summary-card__label">Ventas</span>
     </div>
-    <div class="summary-card">
+    <div class="summary-card summary-card--income">
       <span class="summary-card__value">${formatMXN(total)}</span>
-      <span class="summary-card__label">Total del día</span>
+      <span class="summary-card__label">Total vendido</span>
     </div>
-    <div class="summary-card">
-      <span class="summary-card__value">${pendientes}</span>
-      <span class="summary-card__label">Fiados</span>
+    <div class="summary-card summary-card--expense">
+      <span class="summary-card__value">${formatMXN(gastos)}</span>
+      <span class="summary-card__label">Gastos</span>
     </div>
+    <div class="summary-card summary-card--profit">
+      <span class="summary-card__value">${formatMXN(utilidad)}</span>
+      <span class="summary-card__label">Utilidad</span>
+    </div>
+    ${pendientes > 0 ? `
+      <p class="text-sm text-muted" style="grid-column: 1 / -1; text-align: center; margin: 0;">
+        ⚠️ ${pendientes} venta${pendientes !== 1 ? 's' : ''} fiada${pendientes !== 1 ? 's' : ''} pendiente${pendientes !== 1 ? 's' : ''} de pago
+      </p>` : ''}
   `;
 }
 
@@ -116,8 +142,9 @@ async function _renderLista(container, ventas, fecha) {
 }
 
 function _crearTarjetaVenta(venta, detalles, container) {
-  const esCancelada = venta.estado === 'cancelada';
-  const esFiado     = venta.estadoPago === 'pendiente';
+  const esCancelada     = venta.estado === 'cancelada';
+  const esFiado         = venta.estadoPago === 'pendiente';
+  const puedeCancelarse = !esCancelada && _puedeCancelarse(venta);
 
   const div = document.createElement('div');
   div.className = 'card';
@@ -141,11 +168,13 @@ function _crearTarjetaVenta(venta, detalles, container) {
           ${venta.descuento > 0 ? `· Descuento: ${formatMXN(venta.descuento)}` : ''}
         </div>
       </div>
-      ${!esCancelada ? `
+      ${esCancelada ? '' : (puedeCancelarse ? `
         <button class="btn btn-ghost btn-sm btn-cancelar-venta" data-id="${esc(venta.id)}"
                 style="color: var(--color-danger); white-space: nowrap; font-size: var(--font-size-xs);">
           Cancelar
-        </button>` : ''}
+        </button>` : `
+        <span class="text-xs text-muted" style="white-space: nowrap;"
+              title="Solo se pueden cancelar ventas de las últimas 24 horas">🔒 No cancelable</span>`)}
     </div>
 
     <!-- Detalle de productos -->
