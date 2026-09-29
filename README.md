@@ -52,7 +52,7 @@ TamalitosAPP/
 - [Fase 3 — Épicas e Historias de Usuario (Gherkin)](Documentacion/fase3_historias_usuario.md)
 - [Fase 4 — Plan de Trabajo en 5 Sprints](Documentacion/fase4_plan_trabajo.md)
 - [Sprint 5 — Auditoría iOS, QA y Lanzamiento](Documentacion/sprint5_qa.md)
-- [v2.0.0 — Registro de Cambios y Backlog](Documentacion/v2.0.0_cambios.md)
+- [v2.0.0 — Análisis y Plan por Fases](Documentacion/v2.0.0_cambios.md)
 
 ---
 
