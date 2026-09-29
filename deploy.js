@@ -18,8 +18,19 @@ try {
   }
 
   console.log('🚀 Iniciando despliegue a Vercel Producción...');
-  execSync(`npx vercel --token ${auth.token} --prod --yes`, { stdio: 'inherit' });
-  console.log('✅ Despliegue completado con éxito.');
+  // Intentar primero con la sesión activa del CLI de Vercel
+  try {
+    execSync('npx vercel --prod --yes', { stdio: 'inherit' });
+    console.log('✅ Despliegue completado con éxito.');
+  } catch (cliErr) {
+    if (auth.token) {
+      console.log('Reintentando con token explícito...');
+      execSync(`npx vercel --token ${auth.token} --prod --yes`, { stdio: 'inherit' });
+      console.log('✅ Despliegue completado con éxito.');
+    } else {
+      throw cliErr;
+    }
+  }
 } catch (error) {
   console.error('❌ Error en el despliegue:', error.message);
   process.exit(1);
