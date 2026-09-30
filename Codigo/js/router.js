@@ -157,7 +157,7 @@ function _aplicarTema() {
   // Actualizar theme-color del manifest para la barra de estado de iOS
   const metaTheme = document.querySelector('meta[name="theme-color"]');
   if (metaTheme) {
-    metaTheme.content = tema === 'dark' ? '#0f172a' : '#ffffff';
+    metaTheme.content = tema === 'dark' ? '#0f172a' : '#FFF4E4';
   }
 }
 

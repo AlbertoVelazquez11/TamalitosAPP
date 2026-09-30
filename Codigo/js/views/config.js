@@ -171,7 +171,7 @@ export async function render(container) {
     guardarConfig({ tema });
     document.documentElement.setAttribute('data-theme', tema);
     const metaTheme = document.querySelector('meta[name="theme-color"]');
-    if (metaTheme) metaTheme.content = tema === 'dark' ? '#0f172a' : '#ffffff';
+    if (metaTheme) metaTheme.content = tema === 'dark' ? '#0f172a' : '#FFF4E4';
     toast.info(`Tema ${tema === 'dark' ? 'oscuro' : 'claro'} activado.`);
   });
 

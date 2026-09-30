@@ -3,70 +3,70 @@
    Modo claro (default) + Modo oscuro
    ============================================================ */
 
-/* ── MODO CLARO — Paleta "Blush & Sky" ────────────────────── */
+/* ── MODO CLARO — Paleta "Crema & Melocotón" ─────────────── */
 /*
-   Colores definidos por el usuario:
-   Background principal : #A2D2FF  (azul pastel cielo)
-   Pantallas secundarias: #BDE0FE  (azul pastel suave)
-   Detalles 1           : #FFAFCC  (rosa chicle)
-   Detalles 2           : #FFC8DD  (rosa bebe)
-   Detalles 3           : #CDB4DB  (lila suave)
+   Paleta pastel cálida con buen contraste entre fondo, tarjetas y botones:
+   Background principal : #FFF4E4  (crema melocotón claro)
+   Tarjetas / superficies: #FFFFFF
+   Superficie alterna   : #FFE9C7  (melocotón suave)
+   Primario (CTA)       : #FFC86B  (naranja claro, más amarillo que rojo)
+   Acento (detalles)    : #8FD3B6  (menta suave)
 */
 :root,
 [data-theme="light"] {
   /* Fondos */
-  --color-bg:             #A2D2FF;   /* Fondo principal — azul pastel */
-  --color-surface:        #BDE0FE;   /* Tarjetas, paneles, pantallas secundarias */
-  --color-surface-alt:    #FFC8DD;   /* Superficie alterna — rosa bebé */
-  --color-surface-raised: #ffffff;   /* Modales, toasts (sobre todo) */
+  --color-bg:             #FFF4E4;   /* Fondo principal — crema melocotón */
+  --color-surface:        #FFFFFF;   /* Tarjetas, paneles, pantallas secundarias */
+  --color-surface-alt:    #FFE9C7;   /* Superficie alterna — melocotón suave */
+  --color-surface-raised: #FFFFFF;   /* Modales, toasts (sobre todo) */
 
   /* Bordes */
-  --color-border:         rgba(60, 90, 160, 0.20);
-  --color-border-strong:  rgba(60, 90, 160, 0.38);
+  --color-border:         rgba(176, 118, 44, 0.22);
+  --color-border-strong:  rgba(176, 118, 44, 0.45);
 
-  /* Textos — oscuros con tinte violeta para contraste sobre pasteles */
-  --color-text:           #1e0f2e;   /* Casi negro con tinte morado */
-  --color-text-muted:     #5e456f;   /* Gris violáceo para texto secundario */
-  --color-text-inverse:   #1e0f2e;   /* Texto sobre botones primarios (fondo rosa) */
+  /* Textos — marrón cálido oscuro para buen contraste */
+  --color-text:           #33241A;
+  --color-text-muted:     #7A5430;
+  --color-text-inverse:   #33241A;
 
-  /* Marca principal — Detalles 1 (rosa chicle) para CTAs */
-  --color-primary:        #FFAFCC;
-  --color-primary-dark:   #e891af;   /* ~12% más oscuro para estados active/hover */
-  --color-primary-light:  #FFC8DD;   /* Detalles 2 para fondos sutiles del primario */
-  --color-primary-text:   #1e0f2e;   /* Texto sobre el botón primario */
+  /* Marca principal — naranja claro (más amarillo que rojo) */
+  --color-primary:        #FFC86B;
+  --color-primary-dark:   #F2AC3D;   /* activo/hover */
+  --color-primary-light:  #FFE6B8;   /* fondos sutiles del primario */
+  --color-primary-text:   #432E00;   /* texto sobre botón primario */
 
-  /* Color de acento — Detalles 3 (lila) */
-  --color-accent:         #CDB4DB;
-  --color-accent-dark:    #b89dc8;
-  --color-accent-light:   rgba(205, 180, 219, 0.30);
+  /* Color de acento — menta suave */
+  --color-accent:         #8FD3B6;
+  --color-accent-dark:    #63BD97;
+  --color-accent-light:   rgba(143, 211, 182, 0.30);
 
   /* Estados semánticos */
-  --color-success:        #1a7a4a;
-  --color-success-bg:     rgba(26, 122, 74, 0.12);
-  --color-danger:         #c0334d;
-  --color-danger-bg:      rgba(192, 51, 77, 0.12);
-  --color-warning:        #b86e0a;
-  --color-warning-bg:     rgba(184, 110, 10, 0.12);
-  --color-info:           #1a60b8;
-  --color-info-bg:        rgba(26, 96, 184, 0.12);
+  --color-success:        #1E7A4A;
+  --color-success-bg:     rgba(30, 122, 74, 0.12);
+  --color-danger:         #C0393A;
+  --color-danger-bg:      rgba(192, 57, 58, 0.12);
+  --color-warning:        #A85D00;
+  --color-warning-bg:     rgba(168, 93, 0, 0.12);
+  --color-info:           #1A6FB8;
+  --color-info-bg:        rgba(26, 111, 184, 0.12);
 
   /* Pending / Fiado */
-  --color-pending:        #7040a0;
-  --color-pending-bg:     rgba(112, 64, 160, 0.14);
+  --color-pending:        #8A5AC9;
+  --color-pending-bg:     rgba(138, 90, 201, 0.14);
 
-  /* Sombras — tono azul frío acorde al fondo */
-  --shadow-sm:  0 1px 3px  rgba(30, 60, 140, 0.12);
-  --shadow-md:  0 4px 12px rgba(30, 60, 140, 0.16);
-  --shadow-lg:  0 8px 28px rgba(30, 60, 140, 0.22);
+  /* Sombras — tono cálido acorde al fondo */
+  --shadow-sm:  0 1px 3px  rgba(176, 118, 44, 0.12);
+  --shadow-md:  0 4px 12px rgba(176, 118, 44, 0.16);
+  --shadow-lg:  0 8px 28px rgba(176, 118, 44, 0.22);
 
   /* Overlay de modales */
-  --color-overlay: rgba(10, 5, 30, 0.55);
+  --color-overlay: rgba(46, 24, 8, 0.50);
 
   /* Separadores */
-  --color-divider: rgba(60, 90, 160, 0.14);
+  --color-divider: rgba(176, 118, 44, 0.16);
 
   /* Icono sutil (engrane, etc.) */
-  --color-icon-muted: #7a8ab8;
+  --color-icon-muted: #B08A5C;
 }
 
 /* ── MODO OSCURO — Complemento nocturno de la paleta ─────── */
