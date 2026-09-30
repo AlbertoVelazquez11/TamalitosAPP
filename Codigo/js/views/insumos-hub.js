@@ -1,5 +1,5 @@
 /**
- * insumos-hub.js — Hub de Producción, Inventario y Costos
+ * insumos-hub.js — Hub de Administración
  * Vista intermedia con acceso a los dos sub-módulos.
  */
 import { navegar, navegarAtras } from '../router.js';
@@ -9,7 +9,7 @@ export async function render(container) {
     <div class="view">
       <div class="view-header">
         <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">←</button>
-        <h1 class="view-header__title">Producción, Inventario y Costos</h1>
+        <h1 class="view-header__title">Administración</h1>
       </div>
 
       <p class="text-muted text-sm" style="margin-bottom: var(--space-4);">

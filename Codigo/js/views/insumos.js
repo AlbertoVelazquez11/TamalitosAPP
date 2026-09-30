@@ -152,7 +152,7 @@ function _abrirFormulario(insumo, container) {
     <div class="form-group">
       <label class="form-label" for="i-cantidad">Cantidad inicial</label>
       <input id="i-cantidad" type="number" class="form-input"
-             value="0" placeholder="0.0" min="0" step="0.1"
+             placeholder="0.0" min="0" step="0.1"
              inputmode="decimal" autocomplete="off">
     </div>` : `
     <div class="form-group">
@@ -257,7 +257,7 @@ function _abrirAjusteInventario(insumo, container) {
         <label class="form-label" for="aj-nueva-cantidad">Nueva cantidad</label>
         <input id="aj-nueva-cantidad" type="number" class="form-input"
                value="${insumo.cantidad ?? 0}" step="0.1"
-               inputmode="decimal" autocomplete="off">
+               inputmode="decimal" autocomplete="off" onfocus="this.select()">
         <span class="text-xs text-muted">Puede ser negativa si el inventario estaba mal registrado.</span>
       </div>
     `,

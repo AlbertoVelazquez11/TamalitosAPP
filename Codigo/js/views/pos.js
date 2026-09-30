@@ -22,6 +22,9 @@ import { toast }   from '../components/toast.js';
 import { esc, formatMXN, formatCantidad, hoy, ahoraHora } from '../utils.js';
 import { navegar, navegarAtras } from '../router.js';
 
+// Referencia a los productos activos para reflejar stock sin recargar la vista
+let _productosActuales = [];
+
 export async function render(container) {
   // Activar layout de dos paneles en #app
   const appEl = document.getElementById('app');
@@ -29,6 +32,7 @@ export async function render(container) {
 
   // ── Cargar productos activos ──────────────────────────────
   const productos = await getProductosActivos();
+  _productosActuales = productos;
 
   // ── Estructura base de la vista ──────────────────────────
   // NOTA: los productos vacíos y la grilla van dentro de pos-products-section
@@ -369,6 +373,13 @@ async function _confirmarCobro(cerrar, subtotal) {
     cerrar();
     limpiarPedido();
 
+    // Actualizar stock local y reflejarlo en los botones sin recargar
+    pedido.forEach(item => {
+      const prod = _productosActuales.find(p => p.id === item.productoId);
+      if (prod) prod.cantidad = (prod.cantidad ?? 0) - item.cantidad;
+    });
+    _reflejarStock();
+
     const msg = esSinIngreso
       ? `Pedido sin ingreso registrado (${motivo})`
       : (esFiado
@@ -380,4 +391,20 @@ async function _confirmarCobro(cerrar, subtotal) {
     console.error('[POS] Error al guardar la venta:', e);
     toast.error('Error al registrar la venta. Intenta de nuevo.');
   }
+}
+
+// ══════════════════════════════════════════════════════════
+// REFLEJAR STOCK EN LOS BOTONES (sin recargar la vista)
+// ══════════════════════════════════════════════════════════
+
+function _reflejarStock() {
+  document.querySelectorAll('.product-btn').forEach(btn => {
+    const prod = _productosActuales.find(p => p.id === btn.dataset.id);
+    if (!prod) return;
+
+    const stock   = prod.cantidad ?? 0;
+    const stockEl = btn.querySelector('.product-btn__stock');
+    if (stockEl) stockEl.textContent = `${formatCantidad(stock)} disp.`;
+    btn.setAttribute('aria-label', `${formatCantidad(stock)} disponibles — ${prod.nombre} ${formatMXN(prod.precio)}`);
+  });
 }

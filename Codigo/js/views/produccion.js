@@ -105,7 +105,7 @@ async function _renderFormulario(container) {
       <div class="form-group" style="margin-top: var(--space-3);">
         <label class="form-label" for="prod-cantidad">Cantidad producida *</label>
         <input id="prod-cantidad" type="number" class="form-input"
-               value="1" min="1" step="1" inputmode="numeric">
+               placeholder="1" min="1" step="1" inputmode="numeric">
       </div>
     </div>
 
@@ -248,7 +248,7 @@ async function _confirmarProduccion(container, productos, insumos) {
       insumosUsados: usados,
     });
     toast.success(`Producción registrada: ${cantidadProducida} × ${producto?.nombre ?? ''}`);
-    await _renderFormulario(container); // reiniciar para otra producción
+    navegar('insumos-costos'); // volver al menú anterior
   } catch (e) {
     console.error('[Producción] Error al guardar:', e);
     toast.error('Error al registrar la producción.');
