@@ -52,6 +52,9 @@ export async function render(container) {
         <button class="btn btn-secondary home-secondary-btn" id="btn-insumos">
           📦 Producción, Inventario y Costos
         </button>
+        <button class="btn btn-secondary home-secondary-btn" id="btn-dashboard">
+          📊 Dashboard
+        </button>
       </div>
 
       <!-- Badge de versión en la parte inferior -->
@@ -71,6 +74,9 @@ export async function render(container) {
 
   container.querySelector('#btn-insumos')
     .addEventListener('click', () => navegar('insumos-costos'));
+
+  container.querySelector('#btn-dashboard')
+    .addEventListener('click', () => navegar('dashboard'));
 
   // ── Suscripción reactiva al nombre y logo del negocio ─────────
   const unsub = store.subscribe('config', (config) => {

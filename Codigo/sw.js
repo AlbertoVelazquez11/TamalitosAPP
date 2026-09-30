@@ -8,7 +8,7 @@
  * limpieza de cachés obsoletas en los clientes.
  */
 
-const CACHE_NAME = 'tamalitos-v13';
+const CACHE_NAME = 'tamalitos-v14';
 
 // Recursos del app shell que se precachean en la instalación.
 // El SW debe poder servir la app completa sin ninguna petición a la red.
@@ -46,6 +46,7 @@ const ASSETS_TO_CACHE = [
   './js/views/insumos.js',
   './js/views/costos.js',
   './js/views/produccion.js',
+  './js/views/dashboard.js',
   './js/views/config.js',
   './js/views/productos.js',
 

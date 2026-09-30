@@ -83,14 +83,17 @@ function _fila(arr) {
 async function _csvVentas(inicio, fin) {
   const ventas = await getVentasPorFecha(inicio, fin);
   const lineas = [
-    _fila(['Fecha', 'Hora', 'Productos', 'Cantidades', 'Subtotal', 'Descuento', 'Total', 'Método de Pago', 'Estado']),
+    _fila(['Fecha', 'Hora', 'Productos', 'Cantidades', 'Subtotal', 'Descuento', 'Total', 'Tipo', 'Estado de Pago', 'Motivo', 'Estado']),
   ];
 
   for (const v of ventas) {
     const detalles   = await getDetallesByVentaId(v.id);
     const productos  = detalles.map(d => `${d.nombreProducto} x${d.cantidad}`).join('; ');
     const cantidades = detalles.reduce((s, d) => s + d.cantidad, 0);
-    const metodo     = v.estadoPago === 'pendiente' ? 'Efectivo (Fiado)' : 'Efectivo';
+
+    const tipo       = v.tipo === 'noIngreso' ? 'Sin ingreso' : 'Venta';
+    const estadoPago = v.tipo === 'noIngreso' ? '—' : (v.estadoPago === 'pendiente' ? 'Fiada' : 'Pagada');
+    const motivo     = v.tipo === 'noIngreso' ? (v.motivoNoIngreso || '') : '';
     const estado     = v.estado === 'cancelada' ? 'Cancelada' : 'Cobrada';
 
     lineas.push(_fila([
@@ -101,7 +104,9 @@ async function _csvVentas(inicio, fin) {
       (v.subtotal ?? 0).toFixed(2),
       (v.descuento ?? 0).toFixed(2),
       (v.total ?? 0).toFixed(2),
-      metodo,
+      tipo,
+      estadoPago,
+      motivo,
       estado,
     ]));
   }
