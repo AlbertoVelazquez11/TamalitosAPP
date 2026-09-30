@@ -41,8 +41,13 @@ export async function render(container) {
       <!-- Resumen financiero -->
       <div id="dash-resumen" class="summary-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: var(--space-5);"></div>
 
-      <!-- Gráfica -->
-      <div id="dash-pie"></div>
+      <!-- Gráfica por producto -->
+      <div class="section-title">Venta por producto</div>
+      <div id="dash-pie-productos"></div>
+
+      <!-- Gráfica por tipo de ingreso -->
+      <div class="section-title" style="margin-top: var(--space-5);">Por tipo de ingreso</div>
+      <div id="dash-pie-estado"></div>
     </div>
   `;
 
@@ -87,6 +92,9 @@ async function _cargar(container, periodo) {
   let sinIngresoMonto = 0;
   let fiadasCount     = 0;
   let fiadasMonto     = 0;
+  let qtyIngresos     = 0;
+  let qtyFiadas       = 0;
+  let qtySinIngreso   = 0;
 
   vigentes.forEach((v, i) => {
     const detalles    = detallesAll[i] || [];
@@ -105,7 +113,9 @@ async function _cargar(container, periodo) {
         porProducto.set(d.productoId, agg);
       }
       agg.cantidad += d.cantidad;
-      if (esIngreso) agg.ingresos += d.subtotalLinea;
+      if (esIngreso)   { agg.ingresos += d.subtotalLinea; qtyIngresos += d.cantidad; }
+      if (esFiada)     qtyFiadas     += d.cantidad;
+      if (esNoIngreso) qtySinIngreso += d.cantidad;
     }
   });
 
@@ -126,8 +136,16 @@ async function _cargar(container, periodo) {
     </div>
   `;
 
-  // Gráfica
-  _renderPie(container.querySelector('#dash-pie'), [...porProducto.values()]);
+  // Gráfica por producto
+  _renderPie(container.querySelector('#dash-pie-productos'), [...porProducto.values()]);
+
+  // Gráfica por tipo de ingreso (cantidad de tamales)
+  const estadoData = [
+    { nombre: 'Ingresos',    cantidad: qtyIngresos,   ingresos: ingresos },
+    { nombre: 'Fiadas',      cantidad: qtyFiadas,     ingresos: fiadasMonto },
+    { nombre: 'Sin ingreso', cantidad: qtySinIngreso, ingresos: sinIngresoMonto },
+  ];
+  _renderPie(container.querySelector('#dash-pie-estado'), estadoData);
 }
 
 // ══════════════════════════════════════════════════════════

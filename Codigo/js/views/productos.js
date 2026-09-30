@@ -155,8 +155,8 @@ function _abrirFormulario(producto, container) {
     <div class="form-group">
       <label class="form-label" for="f-cantidad">${esNuevo ? 'Cantidad inicial' : 'Cantidad (stock)'}</label>
       <input id="f-cantidad" type="number" class="form-input"
-             value="${producto?.cantidad ?? 0}"
-             placeholder="0" step="1" inputmode="numeric">
+             value="${producto?.cantidad ?? ''}"
+             placeholder="0" step="1" inputmode="numeric" onfocus="this.select()">
     </div>
     <div class="form-group">
       <label class="form-label" for="f-desc">Descripción <span class="text-muted">(opcional)</span></label>

@@ -7,7 +7,7 @@
  *  - Barra superior con botón de engrane (→ Config) y badge de versión
  *  - Hero con logo, nombre del negocio y tagline
  *  - Botón CTA principal "Registrar Venta"
- *  - Botón secundario "Producción, Inventario y Costos"
+ *  - Botón secundario "Administración"
  */
 
 import { store }   from '../store.js';
@@ -50,7 +50,7 @@ export async function render(container) {
           💰 Registrar Venta
         </button>
         <button class="btn btn-secondary home-secondary-btn" id="btn-insumos">
-          📦 Producción, Inventario y Costos
+          📦 Administración
         </button>
         <button class="btn btn-secondary home-secondary-btn" id="btn-dashboard">
           📊 Dashboard
