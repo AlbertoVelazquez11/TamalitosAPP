@@ -279,6 +279,12 @@
   font-weight: var(--font-weight-bold);
 }
 
+.product-btn__stock {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-semibold);
+}
+
 /* ── Panel de la Comanda (panel inferior del POS) ── */
 .order-panel {
   flex-shrink: 0;           /* No se comprime */

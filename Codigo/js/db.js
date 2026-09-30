@@ -305,7 +305,7 @@ export async function guardarVentaCompleta(venta, detalles) {
   const db = await openDB();
 
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(['ventas', 'detalleVenta'], 'readwrite');
+    const tx = db.transaction(['ventas', 'detalleVenta', 'productos'], 'readwrite');
     tx.onerror = () => reject(tx.error);
 
     const ahora    = new Date();
@@ -320,7 +320,8 @@ export async function guardarVentaCompleta(venta, detalles) {
     // Guardar cabecera
     tx.objectStore('ventas').put(ventaRecord);
 
-    // Guardar cada línea del pedido
+    // Guardar cada línea del pedido + descontar stock del producto
+    const storeProductos = tx.objectStore('productos');
     detalles.forEach((det, idx) => {
       const detRecord = {
         ...det,
@@ -328,6 +329,16 @@ export async function guardarVentaCompleta(venta, detalles) {
         ventaId: ventaId,
       };
       tx.objectStore('detalleVenta').put(detRecord);
+
+      // Descontar stock (permite quedar en negativo)
+      const req = storeProductos.get(det.productoId);
+      req.onsuccess = () => {
+        const prod = req.result;
+        if (prod) {
+          prod.cantidad = (prod.cantidad ?? 0) - det.cantidad;
+          storeProductos.put(prod);
+        }
+      };
     });
 
     tx.oncomplete = () => resolve(ventaId);
@@ -393,6 +404,53 @@ export async function guardarProduccion({ productoId, nombreProducto, cantidadPr
     });
 
     tx.oncomplete = () => resolve(id);
+  });
+}
+
+/**
+ * Cancela una venta (soft-delete) y restaura el stock de los productos vendidos.
+ * @param {string} ventaId
+ * @param {string} motivo
+ * @returns {Promise<void>}
+ */
+export async function cancelarVenta(ventaId, motivo) {
+  const db = await openDB();
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(['ventas', 'detalleVenta', 'productos'], 'readwrite');
+    tx.onerror = () => reject(tx.error);
+
+    // Marcar venta como cancelada
+    const storeVentas = tx.objectStore('ventas');
+    const reqVenta = storeVentas.get(ventaId);
+    reqVenta.onsuccess = () => {
+      const venta = reqVenta.result;
+      if (!venta) return;
+      venta.estado            = 'cancelada';
+      venta.motivoCancelacion = motivo;
+      venta.actualizadoEn     = new Date().toISOString();
+      storeVentas.put(venta);
+    };
+
+    // Restaurar stock de los productos vendidos
+    const storeDetalles = tx.objectStore('detalleVenta');
+    const reqDetalles   = storeDetalles.index('ventaId').getAll(ventaId);
+    reqDetalles.onsuccess = () => {
+      const detalles       = reqDetalles.result || [];
+      const storeProductos = tx.objectStore('productos');
+      for (const d of detalles) {
+        const reqProd = storeProductos.get(d.productoId);
+        reqProd.onsuccess = () => {
+          const prod = reqProd.result;
+          if (prod) {
+            prod.cantidad = (prod.cantidad ?? 0) + d.cantidad;
+            storeProductos.put(prod);
+          }
+        };
+      }
+    };
+
+    tx.oncomplete = () => resolve();
   });
 }
 

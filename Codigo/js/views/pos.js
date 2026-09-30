@@ -19,7 +19,7 @@ import { getProductosActivos, guardarVentaCompleta } from '../db.js';
 import { store, agregarAlPedido, cambiarCantidad, limpiarPedido, calcularSubtotal } from '../store.js';
 import { modal }   from '../components/modal.js';
 import { toast }   from '../components/toast.js';
-import { esc, formatMXN, hoy, ahoraHora } from '../utils.js';
+import { esc, formatMXN, formatCantidad, hoy, ahoraHora } from '../utils.js';
 import { navegar, navegarAtras } from '../router.js';
 
 export async function render(container) {
@@ -60,7 +60,8 @@ export async function render(container) {
           <div class="product-grid" id="product-grid">
             ${productos.map(p => `
               <button class="product-btn" data-id="${esc(p.id)}" type="button"
-                      aria-label="${esc(p.nombre)} ${formatMXN(p.precio)}">
+                      aria-label="${formatCantidad(p.cantidad)} disponibles — ${esc(p.nombre)} ${formatMXN(p.precio)}">
+                <span class="product-btn__stock">${formatCantidad(p.cantidad)} disp.</span>
                 <span class="product-btn__name">${esc(p.nombre)}</span>
                 <span class="product-btn__price">${formatMXN(p.precio)}</span>
               </button>`).join('')}
@@ -98,6 +99,14 @@ export async function render(container) {
     // Animación táctil de feedback
     btn.classList.add('product-btn--added');
     setTimeout(() => btn.classList.remove('product-btn--added'), 180);
+
+    // Advertencia si el stock quedaría en negativo
+    const pedido   = store.getState().pedidoActual;
+    const enPedido = pedido.find(i => i.productoId === id)?.cantidad ?? 0;
+    const stock    = prod.cantidad ?? 0;
+    if ((stock - (enPedido + 1)) < 0) {
+      toast.info(`Stock insuficiente de "${prod.nombre}" (quedaría en ${formatCantidad(stock - enPedido - 1)}).`);
+    }
 
     agregarAlPedido(prod);
   });
@@ -241,6 +250,20 @@ function _abrirModalCobro(pedido) {
         <span class="switch__track"></span>
       </label>
     </div>
+
+    <!-- Pedido sin ingreso (muestra / regalo / merma) -->
+    <div class="fiado-row">
+      <label class="fiado-label" for="cobro-sin-ingreso">🎁 Sin ingreso (muestra / regalo / merma)</label>
+      <label class="switch">
+        <input type="checkbox" id="cobro-sin-ingreso">
+        <span class="switch__track"></span>
+      </label>
+    </div>
+    <div class="form-group" id="cobro-motivo-group" style="display:none; margin-top: var(--space-2);">
+      <label class="form-label" for="cobro-motivo">Motivo <span class="text-muted">(obligatorio)</span></label>
+      <input id="cobro-motivo" type="text" class="form-input"
+             placeholder="Ej. muestra, regalo, merma…" maxlength="80" autocomplete="off">
+    </div>
   `;
 
   const cerrar = modal.abrir({
@@ -265,17 +288,45 @@ function _abrirModalCobro(pedido) {
       });
     }
   }, 80);
+
+  setTimeout(() => {
+    const sinIngresoInput = document.getElementById('cobro-sin-ingreso');
+    const fiadoInput      = document.getElementById('cobro-fiado');
+    const motivoGroup     = document.getElementById('cobro-motivo-group');
+
+    if (sinIngresoInput && fiadoInput && motivoGroup) {
+      sinIngresoInput.addEventListener('change', () => {
+        motivoGroup.style.display = sinIngresoInput.checked ? '' : 'none';
+        if (sinIngresoInput.checked) fiadoInput.checked = false;
+      });
+      fiadoInput.addEventListener('change', () => {
+        if (fiadoInput.checked) {
+          sinIngresoInput.checked = false;
+          motivoGroup.style.display = 'none';
+        }
+      });
+    }
+  }, 80);
 }
 
 async function _confirmarCobro(cerrar, subtotal) {
-  const descInput  = document.getElementById('cobro-descuento');
-  const fiadoInput = document.getElementById('cobro-fiado');
+  const descInput       = document.getElementById('cobro-descuento');
+  const fiadoInput      = document.getElementById('cobro-fiado');
+  const sinIngresoInput = document.getElementById('cobro-sin-ingreso');
+  const motivoInput     = document.getElementById('cobro-motivo');
 
-  const descuento = Math.max(0, parseFloat(descInput?.value) || 0);
-  const esFiado   = fiadoInput?.checked ?? false;
+  const descuento    = Math.max(0, parseFloat(descInput?.value) || 0);
+  const esFiado      = fiadoInput?.checked ?? false;
+  const esSinIngreso = sinIngresoInput?.checked ?? false;
+  const motivo       = (motivoInput?.value ?? '').trim();
 
   if (descuento >= subtotal) {
     toast.error('El descuento no puede ser igual o mayor al total.');
+    return;
+  }
+
+  if (esSinIngreso && !motivo) {
+    toast.error('Indica el motivo del pedido sin ingreso.');
     return;
   }
 
@@ -295,7 +346,9 @@ async function _confirmarCobro(cerrar, subtotal) {
     subtotal,
     descuento,
     total,
-    estadoPago:        esFiado ? 'pendiente' : 'pagada',
+    tipo:              esSinIngreso ? 'noIngreso' : 'venta',
+    motivoNoIngreso:   esSinIngreso ? motivo : null,
+    estadoPago:        esSinIngreso ? 'pagada' : (esFiado ? 'pendiente' : 'pagada'),
     estado:            'cobrada',
     motivoCancelacion: null,
   };
@@ -316,9 +369,11 @@ async function _confirmarCobro(cerrar, subtotal) {
     cerrar();
     limpiarPedido();
 
-    const msg = esFiado
-      ? `Venta registrada como fiado — ${formatMXN(total)}`
-      : `¡Venta registrada! — ${formatMXN(total)}`;
+    const msg = esSinIngreso
+      ? `Pedido sin ingreso registrado (${motivo})`
+      : (esFiado
+        ? `Venta registrada como fiado — ${formatMXN(total)}`
+        : `¡Venta registrada! — ${formatMXN(total)}`);
     toast.success(msg);
 
   } catch (e) {
