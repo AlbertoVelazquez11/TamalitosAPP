@@ -87,15 +87,17 @@
 
 Escenario completo a validar en dispositivo físico:
 
-- [ ] Configurar nombre del negocio y logo.
-- [ ] Crear productos (activos e inactivos).
-- [ ] Crear insumos y registrar gastos.
-- [ ] Vender productos (comanda, descuento, cobro y fiado).
-- [ ] Ver historial con resumen de utilidad.
-- [ ] Cancelar una venta < 24h y verificar que no se pueda cancelar una > 24h.
-- [ ] Exportar CSV de ventas y gastos (día/semana/mes/año).
-- [ ] Exportar respaldo JSON y restaurarlo (en este u otro dispositivo).
-- [ ] Verificar funcionamiento 100% offline (Modo Avión).
+
+
+- [x] Configurar nombre del negocio y logo.
+- [x] Crear productos (activos e inactivos).
+- [x] Crear insumos y registrar gastos.
+- [x] Vender productos (comanda, descuento, cobro y fiado).
+- [x] Ver historial con resumen de utilidad.
+- [x] Cancelar una venta &lt; 24h y verificar que no se pueda cancelar una &gt; 24h.
+- [x] Exportar CSV de ventas y gastos (día/semana/mes/año).
+- [x] Exportar respaldo JSON y restaurarlo (en este u otro dispositivo).
+- [x] Verificar funcionamiento 100% offline (Modo Avión).
 
 ---
 
