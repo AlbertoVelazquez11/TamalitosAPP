@@ -25,6 +25,10 @@ export async function render(container) {
           <div class="hub-card__icon">💸</div>
           <div class="hub-card__title">Registrar Costos</div>
         </div>
+        <div class="hub-card" id="btn-produccion" role="button" tabindex="0">
+          <div class="hub-card__icon">🏭</div>
+          <div class="hub-card__title">Producción</div>
+        </div>
       </div>
     </div>
   `;
@@ -32,5 +36,6 @@ export async function render(container) {
   container.querySelector('#btn-back').addEventListener('click', navegarAtras);
   container.querySelector('#btn-inventario').addEventListener('click', () => navegar('insumos'));
   container.querySelector('#btn-costos').addEventListener('click', () => navegar('costos'));
+  container.querySelector('#btn-produccion').addEventListener('click', () => navegar('produccion'));
 }
 

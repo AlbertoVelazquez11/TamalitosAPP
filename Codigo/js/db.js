@@ -6,6 +6,8 @@
  * Object Stores: productos, insumos, costos, ventas, detalleVenta, producciones
  */
 
+import { hoy } from './utils.js';
+
 const DB_NAME    = 'TamalitosAPP';
 const DB_VERSION = 2;
 
@@ -329,6 +331,68 @@ export async function guardarVentaCompleta(venta, detalles) {
     });
 
     tx.oncomplete = () => resolve(ventaId);
+  });
+}
+
+/**
+ * Guarda una producción en una transacción atómica:
+ *   - Resta del inventario cada insumo usado.
+ *   - Suma la cantidad producida al producto.
+ *   - Guarda el histórico en 'producciones'.
+ *
+ * @param {Object} produccion
+ * @param {string} produccion.productoId
+ * @param {string} produccion.nombreProducto
+ * @param {number} produccion.cantidadProducida
+ * @param {Array}  produccion.insumosUsados — [{ insumoId, nombreInsumo, cantidad }]
+ * @returns {Promise<string>} — id de la producción creada
+ */
+export async function guardarProduccion({ productoId, nombreProducto, cantidadProducida, insumosUsados }) {
+  const db = await openDB();
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(['insumos', 'productos', 'producciones'], 'readwrite');
+    tx.onerror = () => reject(tx.error);
+
+    const ahora    = new Date();
+    const id       = `produccion_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`;
+    const storeInsumos   = tx.objectStore('insumos');
+    const storeProductos = tx.objectStore('productos');
+
+    // Restar insumos usados (permite quedar en negativo)
+    for (const u of insumosUsados) {
+      const req = storeInsumos.get(u.insumoId);
+      req.onsuccess = () => {
+        const insumo = req.result;
+        if (insumo) {
+          insumo.cantidad = (insumo.cantidad ?? 0) - u.cantidad;
+          storeInsumos.put(insumo);
+        }
+      };
+    }
+
+    // Sumar producto
+    const reqProd = storeProductos.get(productoId);
+    reqProd.onsuccess = () => {
+      const prod = reqProd.result;
+      if (prod) {
+        prod.cantidad = (prod.cantidad ?? 0) + cantidadProducida;
+        storeProductos.put(prod);
+      }
+    };
+
+    // Guardar histórico
+    tx.objectStore('producciones').put({
+      id,
+      productoId,
+      nombreProducto,
+      cantidadProducida,
+      insumosUsados,
+      fecha:     hoy(),
+      creadoEn:  ahora.toISOString(),
+    });
+
+    tx.oncomplete = () => resolve(id);
   });
 }
 
