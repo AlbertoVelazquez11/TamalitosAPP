@@ -30,6 +30,17 @@ export function formatMXN(n) {
 }
 
 /**
+ * Formatea una cantidad de inventario (hasta 1 decimal).
+ * @param {number} n
+ * @returns {string} Ej: "12" o "12.5"
+ */
+export function formatCantidad(n) {
+  const num = Number(n);
+  if (!Number.isFinite(num)) return '0';
+  return Number.isInteger(num) ? String(num) : num.toFixed(1);
+}
+
+/**
  * Devuelve la fecha de hoy en formato YYYY-MM-DD (zona local del dispositivo).
  * Compatible con <input type="date"> y con los índices de IndexedDB.
  * @returns {string}

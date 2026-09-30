@@ -2,12 +2,12 @@
  * db.js — Wrapper de IndexedDB para TamalitosAPP
  *
  * Proporciona una API async/await limpia sobre IndexedDB.
- * Versión de esquema: 1
- * Object Stores: productos, insumos, costos, ventas, detalleVenta
+ * Versión de esquema: 2
+ * Object Stores: productos, insumos, costos, ventas, detalleVenta, producciones
  */
 
 const DB_NAME    = 'TamalitosAPP';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 // Singleton de la conexión a la base de datos
 let _db = null;
@@ -88,6 +88,13 @@ function _crearEsquema(db, oldVersion) {
     const store = db.createObjectStore('detalleVenta', { keyPath: 'id' });
     store.createIndex('ventaId',   'ventaId',   { unique: false });
     store.createIndex('productoId','productoId',{ unique: false });
+  }
+
+  // ── Producciones (histórico de producción) ─────────────────
+  if (!db.objectStoreNames.contains('producciones')) {
+    const store = db.createObjectStore('producciones', { keyPath: 'id' });
+    store.createIndex('fecha',      'fecha',      { unique: false });
+    store.createIndex('productoId', 'productoId', { unique: false });
   }
 
   console.log('[DB] Esquema creado/actualizado correctamente.');
@@ -331,15 +338,16 @@ export async function guardarVentaCompleta(venta, detalles) {
  * @returns {Promise<Object>}
  */
 export async function exportarTodo() {
-  const [productos, insumos, costos, ventas, detalleVenta] = await Promise.all([
+  const [productos, insumos, costos, ventas, detalleVenta, producciones] = await Promise.all([
     getAll('productos'),
     getAll('insumos'),
     getAll('costos'),
     getAll('ventas'),
     getAll('detalleVenta'),
+    getAll('producciones'),
   ]);
 
-  return { productos, insumos, costos, ventas, detalleVenta };
+  return { productos, insumos, costos, ventas, detalleVenta, producciones };
 }
 
 /**
@@ -348,7 +356,7 @@ export async function exportarTodo() {
  * @param {Object} respaldo — Objeto con las 5 tablas
  */
 export async function importarRespaldo(respaldo) {
-  const stores = ['productos', 'insumos', 'costos', 'ventas', 'detalleVenta'];
+  const stores = ['productos', 'insumos', 'costos', 'ventas', 'detalleVenta', 'producciones'];
 
   for (const storeName of stores) {
     await clearStore(storeName);
