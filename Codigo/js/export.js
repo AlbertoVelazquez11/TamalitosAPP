@@ -117,7 +117,7 @@ async function _csvVentas(inicio, fin) {
 async function _csvGastos(inicio, fin) {
   const costos = await getCostosPorFecha(inicio, fin);
   const lineas = [
-    _fila(['Fecha', 'Concepto', 'Categoría', 'Monto', 'Notas']),
+    _fila(['Fecha', 'Concepto', 'Categoría', 'Cantidad', 'Monto', 'Notas']),
   ];
 
   for (const c of costos) {
@@ -125,6 +125,7 @@ async function _csvGastos(inicio, fin) {
       c.fecha,
       c.concepto,
       c.categoria,
+      c.cantidad != null ? c.cantidad : '',
       (c.monto ?? 0).toFixed(2),
       c.notas || '',
     ]));
@@ -213,7 +214,7 @@ export async function exportarRespaldoJSON() {
   const datos = await exportarTodo();
   const json  = JSON.stringify({
     _formato:     'tamalitos-respaldo',
-    _version:     '1.0.0',
+    _version:     '2.0.0',
     _exportadoEn: new Date().toISOString(),
     ...datos,
   }, null, 2);
