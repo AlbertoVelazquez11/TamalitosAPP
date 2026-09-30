@@ -17,7 +17,7 @@ import { getAll, put }           from '../db.js';
 import { modal }                  from '../components/modal.js';
 import { toast }                  from '../components/toast.js';
 import { crearSwipeItem }         from '../components/swipe-item.js';
-import { esc, formatMXN, generarId, hoy } from '../utils.js';
+import { esc, formatMXN, formatCantidad, generarId, hoy } from '../utils.js';
 import { navegarAtras }           from '../router.js';
 
 // Registro de funciones de cleanup de los swipe handlers activos
@@ -99,9 +99,7 @@ async function _renderLista(container) {
            aria-label="Editar ${esc(prod.nombre)}">
         <div class="list-item__content">
           <div class="list-item__title">${esc(prod.nombre)}</div>
-          ${prod.descripcion
-            ? `<div class="list-item__subtitle">${esc(prod.descripcion)}</div>`
-            : ''}
+          <div class="list-item__subtitle">Stock: ${formatCantidad(prod.cantidad)}${prod.descripcion ? ` · ${esc(prod.descripcion)}` : ''}</div>
         </div>
         <div class="list-item__trailing">
           <span class="font-bold" style="color: var(--color-primary)">${formatMXN(prod.precio)}</span>
@@ -155,6 +153,12 @@ function _abrirFormulario(producto, container) {
              min="0.01" step="0.50" inputmode="decimal">
     </div>
     <div class="form-group">
+      <label class="form-label" for="f-cantidad">${esNuevo ? 'Cantidad inicial' : 'Cantidad (stock)'}</label>
+      <input id="f-cantidad" type="number" class="form-input"
+             value="${producto?.cantidad ?? 0}"
+             placeholder="0" step="1" inputmode="numeric">
+    </div>
+    <div class="form-group">
       <label class="form-label" for="f-desc">Descripción <span class="text-muted">(opcional)</span></label>
       <textarea id="f-desc" class="form-textarea"
                 placeholder="Ej. Con salsa verde y pollo"
@@ -185,6 +189,9 @@ async function _guardarProducto(productoExistente, container, cerrar) {
   const precio = parseFloat(document.getElementById('f-precio')?.value);
   const desc   = document.getElementById('f-desc')?.value.trim();
 
+  const cantidadVal = Number(document.getElementById('f-cantidad')?.value);
+  const cantidad    = Number.isFinite(cantidadVal) ? Math.round(cantidadVal) : 0;
+
   // Validación
   if (!nombre) {
     toast.error('El nombre del producto es obligatorio.');
@@ -204,6 +211,7 @@ async function _guardarProducto(productoExistente, container, cerrar) {
       nombre,
       precio,
       descripcion:    desc || '',
+      cantidad,
       actualizadoEn:  ahora,
     };
     await put('productos', actualizado);
@@ -218,6 +226,7 @@ async function _guardarProducto(productoExistente, container, cerrar) {
       nombre,
       precio,
       descripcion:  desc || '',
+      cantidad,
       activo:       true,
       orden:        maxOrden + 1,
       creadoEn:     ahora,

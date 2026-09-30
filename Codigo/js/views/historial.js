@@ -7,7 +7,7 @@
  * HU-053: Cancelación de venta solo dentro de las últimas 24 h
  */
 
-import { getVentasPorFecha, getCostosPorFecha, getDetallesByVentaId, put } from '../db.js';
+import { getVentasPorFecha, getCostosPorFecha, getDetallesByVentaId, cancelarVenta, put } from '../db.js';
 import { crearDateFilter } from '../components/date-filter.js';
 import { modal }           from '../components/modal.js';
 import { toast }           from '../components/toast.js';
@@ -86,9 +86,13 @@ async function _renderResumen(container, ventas, fecha) {
   const resumenEl = container.querySelector('#resumen-dia');
   if (!resumenEl) return;
 
-  const cobradas   = ventas.filter(v => v.estado === 'cobrada');
-  const total      = cobradas.reduce((s, v) => s + (v.total || 0), 0);
-  const pendientes = cobradas.filter(v => v.estadoPago === 'pendiente').length;
+  const cobradas       = ventas.filter(v => v.estado === 'cobrada');
+  const ventasNormales = cobradas.filter(v => v.tipo !== 'noIngreso');
+  const ingresos       = ventasNormales.filter(v => v.estadoPago === 'pagada');
+  const fiadas         = ventasNormales.filter(v => v.estadoPago === 'pendiente');
+  const sinIngreso     = cobradas.filter(v => v.tipo === 'noIngreso');
+
+  const total = ingresos.reduce((s, v) => s + (v.total || 0), 0);
 
   // Gastos del día para calcular la utilidad bruta (HU-050)
   const costos   = await getCostosPorFecha(fecha, fecha);
@@ -97,7 +101,7 @@ async function _renderResumen(container, ventas, fecha) {
 
   resumenEl.innerHTML = `
     <div class="summary-card">
-      <span class="summary-card__value">${cobradas.length}</span>
+      <span class="summary-card__value">${ventasNormales.length}</span>
       <span class="summary-card__label">Ventas</span>
     </div>
     <div class="summary-card summary-card--income">
@@ -112,9 +116,9 @@ async function _renderResumen(container, ventas, fecha) {
       <span class="summary-card__value">${formatMXN(utilidad)}</span>
       <span class="summary-card__label">Utilidad</span>
     </div>
-    ${pendientes > 0 ? `
+    ${(fiadas.length + sinIngreso.length) > 0 ? `
       <p class="text-sm text-muted" style="grid-column: 1 / -1; text-align: center; margin: 0;">
-        ⚠️ ${pendientes} venta${pendientes !== 1 ? 's' : ''} fiada${pendientes !== 1 ? 's' : ''} pendiente${pendientes !== 1 ? 's' : ''} de pago
+        ⚠️ ${fiadas.length} fiada${fiadas.length !== 1 ? 's' : ''} pendiente${fiadas.length !== 1 ? 's' : ''} · ${sinIngreso.length} sin ingreso
       </p>` : ''}
   `;
 }
@@ -171,6 +175,8 @@ async function _renderLista(container, ventas, fecha) {
 function _crearTarjetaVenta(venta, detalles, container) {
   const esCancelada     = venta.estado === 'cancelada';
   const esFiado         = venta.estadoPago === 'pendiente';
+  const esSinIngreso    = venta.tipo === 'noIngreso';
+  const esPagadoFiado   = venta.estadoPago === 'pagada' && !!venta.pagadoEn;
   const puedeCancelarse = !esCancelada && _puedeCancelarse(venta);
 
   const div = document.createElement('div');
@@ -187,12 +193,15 @@ function _crearTarjetaVenta(venta, detalles, container) {
           <span style="font-weight: var(--font-weight-bold); font-size: var(--font-size-base);">
             ${formatMXN(venta.total)}
           </span>
-          ${esFiado     ? '<span class="badge-pending">Fiado</span>' : ''}
-          ${esCancelada ? '<span class="badge badge-danger">Cancelada</span>' : ''}
+          ${esFiado        ? '<span class="badge-pending">Fiado</span>' : ''}
+          ${esPagadoFiado  ? '<span class="badge badge-success">Pagado</span>' : ''}
+          ${esSinIngreso   ? '<span class="badge badge-warning">Sin ingreso</span>' : ''}
+          ${esCancelada    ? '<span class="badge badge-danger">Cancelada</span>' : ''}
         </div>
         <div class="text-sm text-muted" style="margin-top: 2px;">
           ${formatFecha(venta.fecha)} · ${formatHora(venta.hora)}
           ${venta.descuento > 0 ? `· Descuento: ${formatMXN(venta.descuento)}` : ''}
+          ${esSinIngreso && venta.motivoNoIngreso ? `· ${esc(venta.motivoNoIngreso)}` : ''}
         </div>
       </div>
       ${esCancelada ? '' : (puedeCancelarse ? `
@@ -212,11 +221,22 @@ function _crearTarjetaVenta(venta, detalles, container) {
           <span style="color:var(--color-text-muted);">${formatMXN(d.subtotalLinea)}</span>
         </div>`).join('')}
     </div>
+
+    ${esFiado && !esCancelada ? `
+      <button class="btn btn-primary btn-block btn-pagar-fiado" data-id="${esc(venta.id)}"
+              style="margin-top: var(--space-3); min-height: 40px;">
+        💵 Registrar pago
+      </button>` : ''}
   `;
 
   // Evento de cancelación
   div.querySelector('.btn-cancelar-venta')?.addEventListener('click', async () => {
     await _cancelarVenta(venta, container);
+  });
+
+  // Evento de registrar pago (fiado)
+  div.querySelector('.btn-pagar-fiado')?.addEventListener('click', () => {
+    _registrarPagoFiado(venta, container);
   });
 
   return div;
@@ -233,7 +253,8 @@ async function _cancelarVenta(venta, container) {
     contenido: `
       <p class="text-sm text-muted" style="margin-bottom: var(--space-3);">
         La venta de <strong>${formatMXN(venta.total)}</strong>
-        se marcará como cancelada y no contará en los ingresos del día.
+        se marcará como cancelada, no contará en los ingresos del día
+        y se restaurará el stock de los productos.
       </p>
       <div class="form-group">
         <label class="form-label" for="motivo-cancel">Motivo <span class="text-muted">(opcional)</span></label>
@@ -246,13 +267,8 @@ async function _cancelarVenta(venta, container) {
       { texto: 'Cancelar venta', clase: 'btn-danger', accion: async () => {
         const motivo = document.getElementById('motivo-cancel')?.value.trim() || 'Sin motivo';
         try {
-          await put('ventas', {
-            ...venta,
-            estado:            'cancelada',
-            motivoCancelacion: motivo,
-            actualizadoEn:     new Date().toISOString(),
-          });
-          toast.success('Venta cancelada.');
+          await cancelarVenta(venta.id, motivo);
+          toast.success('Venta cancelada. Stock restaurado.');
           cerrar();
           await _cargarVentas(container);
         } catch (e) {
@@ -262,4 +278,31 @@ async function _cancelarVenta(venta, container) {
       }},
     ],
   });
+}
+
+// ══════════════════════════════════════════════════════════
+// REGISTRAR PAGO DE FIADO
+// ══════════════════════════════════════════════════════════
+
+async function _registrarPagoFiado(venta, container) {
+  const confirmado = await modal.confirmar(
+    'Registrar Pago',
+    `¿Confirmar el pago de ${formatMXN(venta.total)}? A partir de ahora contará como ingreso.`,
+    'Registrar pago',
+    'btn-primary'
+  );
+  if (!confirmado) return;
+
+  try {
+    await put('ventas', {
+      ...venta,
+      estadoPago: 'pagada',
+      pagadoEn:   new Date().toISOString(),
+    });
+    toast.success('Pago registrado.');
+    await _cargarVentas(container);
+  } catch (e) {
+    console.error('[Historial] Error al registrar pago:', e);
+    toast.error('Error al registrar el pago.');
+  }
 }

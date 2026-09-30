@@ -1,24 +1,25 @@
 /**
- * insumos.js — Catálogo de Insumos (Sprint 2)
+ * insumos.js — Catálogo de Insumos (v2 · Sprint 1)
  *
- * HU-030: Agregar insumo al catálogo
- * HU-031: Eliminar insumo con gesto swipe-to-delete
- *
- * Los insumos son un clasificador de conceptos de gasto,
- * NO están vinculados al inventario ni a las ventas.
+ * Cambios v2:
+ *  - Insumos con cantidad (hasta 1 decimal).
+ *  - Edición completa (nombre, unidad, descripción) excepto la cantidad.
+ *  - "Ajustar inventario" manual para corregir el stock.
+ *  - La cantidad se mueve por costos (+) y producciones (−).
  *
  * Flujo:
- *  - Lista de insumos desde IndexedDB
- *  - Botón "+" → modal de alta
- *  - Swipe izquierda → botón "Eliminar" con confirmación
+ *  - Lista de insumos con cantidad y unidad.
+ *  - "+ Nuevo" → alta (nombre, unidad, descripción, cantidad inicial).
+ *  - Tap en un insumo → edición (cantidad solo lectura).
+ *  - Swipe izquierda → eliminar (con confirmación).
  */
 
-import { getAll, put, remove }    from '../db.js';
-import { modal }                   from '../components/modal.js';
-import { toast }                   from '../components/toast.js';
-import { crearSwipeItem }          from '../components/swipe-item.js';
-import { esc, generarId }          from '../utils.js';
-import { navegarAtras }            from '../router.js';
+import { getAll, put, remove } from '../db.js';
+import { modal }               from '../components/modal.js';
+import { toast }               from '../components/toast.js';
+import { crearSwipeItem }      from '../components/swipe-item.js';
+import { esc, generarId, formatCantidad } from '../utils.js';
+import { navegarAtras }        from '../router.js';
 
 let _swipeCleanups = [];
 
@@ -29,16 +30,16 @@ export async function render(container) {
     <div class="view">
       <div class="view-header">
         <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">←</button>
-        <h1 class="view-header__title">Insumos</h1>
+        <h1 class="view-header__title">Inventario de Insumos</h1>
         <div class="view-header__actions">
           <button class="btn btn-primary btn-sm" id="btn-nuevo">+ Nuevo</button>
         </div>
       </div>
 
       <p class="text-sm text-muted" style="margin-bottom: var(--space-4);">
-        Registra los insumos que usas en tu negocio. Los usarás como
-        categorías al registrar un gasto.
-        Desliza hacia la izquierda para eliminar.
+        Registra los insumos con su cantidad actual. La cantidad se actualiza
+        con compras (costos) y producciones. Toca un insumo para editarlo.
+        Desliza hacia la izquierda para eliminarlo.
       </p>
 
       <div id="lista-insumos" class="list"></div>
@@ -46,7 +47,7 @@ export async function render(container) {
   `;
 
   container.querySelector('#btn-back').addEventListener('click', navegarAtras);
-  container.querySelector('#btn-nuevo').addEventListener('click', () => _abrirFormulario(container));
+  container.querySelector('#btn-nuevo').addEventListener('click', () => _abrirFormulario(null, container));
 
   await _renderLista(container);
 
@@ -84,10 +85,12 @@ async function _renderLista(container) {
   lista.innerHTML = '';
 
   for (const insumo of insumos) {
-    const unidad = insumo.unidad ? `<span class="badge badge-warning" style="font-size:0.7rem">${esc(insumo.unidad)}</span>` : '';
+    const unidad   = insumo.unidad ? `<span class="badge badge-warning" style="font-size:0.7rem">${esc(insumo.unidad)}</span>` : '';
+    const cantidad = formatCantidad(insumo.cantidad);
 
     const itemHTML = `
-      <div class="list-item" aria-label="${esc(insumo.nombre)}">
+      <div class="list-item insumo-list-item" role="button" tabindex="0"
+           aria-label="Editar ${esc(insumo.nombre)}">
         <div class="list-item__icon">🧾</div>
         <div class="list-item__content">
           <div class="list-item__title">${esc(insumo.nombre)}</div>
@@ -96,6 +99,7 @@ async function _renderLista(container) {
             : ''}
         </div>
         <div class="list-item__trailing">
+          <span class="font-bold" style="color: var(--color-text);">${cantidad}</span>
           ${unidad}
         </div>
       </div>`;
@@ -109,49 +113,86 @@ async function _renderLista(container) {
       onAccion:      () => _confirmarEliminar(insumo, container),
     });
 
+    // Tap en el contenido del item → abrir formulario de edición
+    elemento.querySelector('.insumo-list-item').addEventListener('click', () => {
+      _abrirFormulario(insumo, container);
+    });
+
     lista.appendChild(elemento);
     _swipeCleanups.push(cleanup);
   }
 }
 
 // ══════════════════════════════════════════════════════════
-// FORMULARIO — CREAR
+// FORMULARIO — CREAR Y EDITAR
 // ══════════════════════════════════════════════════════════
 
-function _abrirFormulario(container) {
+function _abrirFormulario(insumo, container) {
+  const esNuevo = !insumo;
+  const titulo  = esNuevo ? 'Nuevo Insumo' : 'Editar Insumo';
+
   const contenidoHTML = `
     <div class="form-group">
-      <label class="form-label" for="i-nombre">Nombre del insumo *</label>
+      <label class="form-label" for="i-nombre">Nombre *</label>
       <input id="i-nombre" type="text" class="form-input"
+             value="${esc(insumo?.nombre ?? '')}"
              placeholder="Ej. Masa para tamales"
              maxlength="60" autocomplete="off">
     </div>
+
     <div class="form-group">
-      <label class="form-label" for="i-unidad">Unidad de medida <span class="text-muted">(opcional)</span></label>
+      <label class="form-label" for="i-unidad">Unidad <span class="text-muted">(opcional)</span></label>
       <input id="i-unidad" type="text" class="form-input"
+             value="${esc(insumo?.unidad ?? '')}"
              placeholder="Ej. kg, lt, pza, bolsa"
              maxlength="20" autocomplete="off">
     </div>
+
+    ${esNuevo ? `
+    <div class="form-group">
+      <label class="form-label" for="i-cantidad">Cantidad inicial</label>
+      <input id="i-cantidad" type="number" class="form-input"
+             value="0" placeholder="0.0" min="0" step="0.1"
+             inputmode="decimal" autocomplete="off">
+    </div>` : `
+    <div class="form-group">
+      <span class="form-label">Inventario actual</span>
+      <div style="display:flex; align-items:center; gap: var(--space-2);">
+        <input type="text" class="form-input" disabled style="flex:1;"
+               value="${formatCantidad(insumo.cantidad)}${insumo.unidad ? ' ' + esc(insumo.unidad) : ''}">
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-ajustar-inventario">Ajustar</button>
+      </div>
+      <span class="text-xs text-muted">La cantidad cambia por compras y producciones.</span>
+    </div>`}
+
     <div class="form-group">
       <label class="form-label" for="i-desc">Descripción <span class="text-muted">(opcional)</span></label>
       <textarea id="i-desc" class="form-textarea"
                 placeholder="Notas adicionales sobre este insumo"
-                maxlength="120"></textarea>
+                maxlength="120">${esc(insumo?.descripcion ?? '')}</textarea>
     </div>`;
 
   const cerrar = modal.abrir({
-    titulo:   'Nuevo Insumo',
+    titulo,
     contenido: contenidoHTML,
     botones: [
-      { texto: 'Cancelar', clase: 'btn-ghost',   accion: () => cerrar() },
-      { texto: 'Agregar',  clase: 'btn-primary',  accion: () => _guardarInsumo(container, cerrar) },
+      { texto: 'Cancelar', clase: 'btn-ghost', accion: () => cerrar() },
+      { texto: esNuevo ? 'Agregar' : 'Guardar Cambios', clase: 'btn-primary', accion: () => _guardarInsumo(insumo, container, cerrar) },
     ],
   });
+
+  // Acción de ajuste manual de inventario (solo en edición)
+  if (insumo) {
+    document.getElementById('btn-ajustar-inventario')?.addEventListener('click', () => {
+      cerrar();
+      _abrirAjusteInventario(insumo, container);
+    });
+  }
 
   setTimeout(() => document.getElementById('i-nombre')?.focus(), 100);
 }
 
-async function _guardarInsumo(container, cerrar) {
+async function _guardarInsumo(insumoExistente, container, cerrar) {
   const nombre = document.getElementById('i-nombre')?.value.trim();
   const unidad = document.getElementById('i-unidad')?.value.trim();
   const desc   = document.getElementById('i-desc')?.value.trim();
@@ -161,28 +202,84 @@ async function _guardarInsumo(container, cerrar) {
     return;
   }
 
-  // Verificar que no exista uno con el mismo nombre
-  const existentes = await getAll('insumos');
-  const duplicado  = existentes.find(
-    i => i.nombre.toLowerCase() === nombre.toLowerCase()
-  );
-  if (duplicado) {
-    toast.error(`Ya existe un insumo llamado "${nombre}".`);
-    return;
+  if (insumoExistente) {
+    // Edición: NO se modifica la cantidad (solo nombre, unidad y descripción)
+    const actualizado = {
+      ...insumoExistente,
+      nombre,
+      unidad:      unidad || '',
+      descripcion: desc   || '',
+    };
+    await put('insumos', actualizado);
+    toast.success(`"${nombre}" actualizado.`);
+  } else {
+    const cantidad = parseFloat(document.getElementById('i-cantidad')?.value) || 0;
+
+    // Verificar que no exista uno con el mismo nombre
+    const existentes = await getAll('insumos');
+    const duplicado  = existentes.find(
+      i => i.nombre.toLowerCase() === nombre.toLowerCase()
+    );
+    if (duplicado) {
+      toast.error(`Ya existe un insumo llamado "${nombre}".`);
+      return;
+    }
+
+    const nuevo = {
+      id:          generarId('ins'),
+      nombre,
+      unidad:      unidad || '',
+      descripcion: desc   || '',
+      cantidad,
+      creadoEn:    new Date().toISOString(),
+    };
+    await put('insumos', nuevo);
+    toast.success(`"${nombre}" agregado.`);
   }
 
-  const nuevo = {
-    id:          generarId('ins'),
-    nombre,
-    unidad:      unidad || '',
-    descripcion: desc   || '',
-    creadoEn:    new Date().toISOString(),
-  };
-
-  await put('insumos', nuevo);
-  toast.success(`"${nombre}" agregado.`);
   cerrar();
   await _renderLista(container);
+}
+
+// ══════════════════════════════════════════════════════════
+// AJUSTE MANUAL DE INVENTARIO
+// ══════════════════════════════════════════════════════════
+
+function _abrirAjusteInventario(insumo, container) {
+  const cerrar = modal.abrir({
+    titulo: 'Ajustar Inventario',
+    contenido: `
+      <p class="text-sm text-muted" style="margin-bottom: var(--space-3);">
+        Inventario actual de <strong>${esc(insumo.nombre)}</strong>:
+        ${formatCantidad(insumo.cantidad)}${insumo.unidad ? ' ' + esc(insumo.unidad) : ''}.
+      </p>
+      <div class="form-group">
+        <label class="form-label" for="aj-nueva-cantidad">Nueva cantidad</label>
+        <input id="aj-nueva-cantidad" type="number" class="form-input"
+               value="${insumo.cantidad ?? 0}" step="0.1"
+               inputmode="decimal" autocomplete="off">
+        <span class="text-xs text-muted">Puede ser negativa si el inventario estaba mal registrado.</span>
+      </div>
+    `,
+    botones: [
+      { texto: 'Cancelar', clase: 'btn-ghost', accion: () => cerrar() },
+      {
+        texto: 'Guardar',
+        clase: 'btn-primary',
+        accion: async () => {
+          const valor = parseFloat(document.getElementById('aj-nueva-cantidad')?.value);
+          if (Number.isNaN(valor)) {
+            toast.error('Ingresa una cantidad válida.');
+            return;
+          }
+          await put('insumos', { ...insumo, cantidad: valor });
+          toast.success('Inventario ajustado.');
+          cerrar();
+          await _renderLista(container);
+        },
+      },
+    ],
+  });
 }
 
 // ══════════════════════════════════════════════════════════

@@ -35,13 +35,27 @@ TamalitosAPP/
 
 | Módulo | Pantalla | Ruta | Descripción |
 |---|---|---|---|
-| Home | Dashboard | `#/` | Logo, versión, accesos a venta, insumos y configuración |
-| POS | Terminal de Venta | `#/venta` | Grilla de productos, comanda, cobro y ticket digital |
-| Historial | Ventas del Día | `#/historial` | Lista cronológica con filtro, resumen diario y cancelación |
-| Insumos | Hub + Catálogo | `#/insumos-costos` `#/insumos` | Catálogo de insumos con swipe-to-delete |
-| Costos | Registro de Gastos | `#/costos` | Formulario de egresos con historial por fecha |
-| Config | Configuración | `#/config` | Nombre del negocio, admin productos, exportar datos |
-| Productos | CRUD Productos | `#/productos` | Alta, edición, desactivación del catálogo de venta |
+| Home | Inicio | `#/` | Logo, versión y accesos a venta, insumos/costos, dashboard y configuración |
+| POS | Terminal de Venta | `#/venta` | Grilla con stock, comanda, cobro, fiado y pedidos sin ingreso |
+| Historial | Ventas | `#/historial` | Filtro por fecha, resumen (ingresos/gastos/utilidad), cancelación y pago de fiados |
+| Producción | Registrar Producción | `#/produccion` | Producto + cantidad, insumos usados; resta insumos y suma producto |
+| Inventario | Insumos | `#/insumos` | Catálogo con cantidad (stock), edición y ajuste manual |
+| Costos | Registro de Gastos | `#/costos` | Egresos con selector de insumo, cantidad y suma al inventario |
+| Dashboard | Venta por producto | `#/dashboard` | Gráfica de pastel con %, ingresos y selector de período |
+| Config | Configuración | `#/config` | Nombre/logo, tema, productos, exportar CSV y respaldo |
+| Productos | CRUD Productos | `#/productos` | Alta, edición, desactivación y stock |
+
+---
+
+## 🆕 Novedades v2.0.0
+
+- **Inventario con stock:** insumos y productos con cantidad; la producción suma productos y resta insumos; los costos de insumo suman inventario.
+- **Producción:** registro con histórico y aviso de stock negativo.
+- **Venta con stock:** el POS muestra disponibilidad y descuenta al vender.
+- **Pedidos sin ingreso:** muestra, regalo o merma con motivo.
+- **Fiados:** se marca el pago y el ingreso cuenta al pagar.
+- **Dashboard:** venta por producto (pastel + %) e ingresos por período.
+- **Exportación:** CSV con tipo, estado de pago y motivo; respaldo incluye producciones.
 
 ---
 
@@ -52,6 +66,7 @@ TamalitosAPP/
 - [Fase 3 — Épicas e Historias de Usuario (Gherkin)](Documentacion/fase3_historias_usuario.md)
 - [Fase 4 — Plan de Trabajo en 5 Sprints](Documentacion/fase4_plan_trabajo.md)
 - [Sprint 5 — Auditoría iOS, QA y Lanzamiento](Documentacion/sprint5_qa.md)
+- [v2.0.0 — Análisis y Plan por Fases](Documentacion/v2.0.0_cambios.md)
 
 ---
 
@@ -65,8 +80,7 @@ TamalitosAPP/
 | 4 | Historial (filtros, utilidad, cancelación 24h), exportación CSV y respaldo JSON | ✅ |
 | 5 | Pulido iOS, QA y lanzamiento v1.0.0 | ✅ |
 
-> **v1.0.0 finalizada.** El desarrollo de nuevas funciones y ajustes continúa
-> en la rama `develop` (versión **2.0.0**).
+> **v1.0.0 finalizada** (base en `main`). La **v2.0.0** se desarrolla en la rama `develop`.
 
 ### 📤 Exportación y respaldo (Sprint 4)
 - **CSV** de ventas y gastos filtrado por día, semana, mes o año (Web Share API + fallback de descarga).

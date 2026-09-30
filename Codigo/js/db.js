@@ -2,12 +2,14 @@
  * db.js — Wrapper de IndexedDB para TamalitosAPP
  *
  * Proporciona una API async/await limpia sobre IndexedDB.
- * Versión de esquema: 1
- * Object Stores: productos, insumos, costos, ventas, detalleVenta
+ * Versión de esquema: 2
+ * Object Stores: productos, insumos, costos, ventas, detalleVenta, producciones
  */
 
+import { hoy } from './utils.js';
+
 const DB_NAME    = 'TamalitosAPP';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 // Singleton de la conexión a la base de datos
 let _db = null;
@@ -88,6 +90,13 @@ function _crearEsquema(db, oldVersion) {
     const store = db.createObjectStore('detalleVenta', { keyPath: 'id' });
     store.createIndex('ventaId',   'ventaId',   { unique: false });
     store.createIndex('productoId','productoId',{ unique: false });
+  }
+
+  // ── Producciones (histórico de producción) ─────────────────
+  if (!db.objectStoreNames.contains('producciones')) {
+    const store = db.createObjectStore('producciones', { keyPath: 'id' });
+    store.createIndex('fecha',      'fecha',      { unique: false });
+    store.createIndex('productoId', 'productoId', { unique: false });
   }
 
   console.log('[DB] Esquema creado/actualizado correctamente.');
@@ -296,7 +305,7 @@ export async function guardarVentaCompleta(venta, detalles) {
   const db = await openDB();
 
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(['ventas', 'detalleVenta'], 'readwrite');
+    const tx = db.transaction(['ventas', 'detalleVenta', 'productos'], 'readwrite');
     tx.onerror = () => reject(tx.error);
 
     const ahora    = new Date();
@@ -311,7 +320,8 @@ export async function guardarVentaCompleta(venta, detalles) {
     // Guardar cabecera
     tx.objectStore('ventas').put(ventaRecord);
 
-    // Guardar cada línea del pedido
+    // Guardar cada línea del pedido + descontar stock del producto
+    const storeProductos = tx.objectStore('productos');
     detalles.forEach((det, idx) => {
       const detRecord = {
         ...det,
@@ -319,9 +329,128 @@ export async function guardarVentaCompleta(venta, detalles) {
         ventaId: ventaId,
       };
       tx.objectStore('detalleVenta').put(detRecord);
+
+      // Descontar stock (permite quedar en negativo)
+      const req = storeProductos.get(det.productoId);
+      req.onsuccess = () => {
+        const prod = req.result;
+        if (prod) {
+          prod.cantidad = (prod.cantidad ?? 0) - det.cantidad;
+          storeProductos.put(prod);
+        }
+      };
     });
 
     tx.oncomplete = () => resolve(ventaId);
+  });
+}
+
+/**
+ * Guarda una producción en una transacción atómica:
+ *   - Resta del inventario cada insumo usado.
+ *   - Suma la cantidad producida al producto.
+ *   - Guarda el histórico en 'producciones'.
+ *
+ * @param {Object} produccion
+ * @param {string} produccion.productoId
+ * @param {string} produccion.nombreProducto
+ * @param {number} produccion.cantidadProducida
+ * @param {Array}  produccion.insumosUsados — [{ insumoId, nombreInsumo, cantidad }]
+ * @returns {Promise<string>} — id de la producción creada
+ */
+export async function guardarProduccion({ productoId, nombreProducto, cantidadProducida, insumosUsados }) {
+  const db = await openDB();
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(['insumos', 'productos', 'producciones'], 'readwrite');
+    tx.onerror = () => reject(tx.error);
+
+    const ahora    = new Date();
+    const id       = `produccion_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`;
+    const storeInsumos   = tx.objectStore('insumos');
+    const storeProductos = tx.objectStore('productos');
+
+    // Restar insumos usados (permite quedar en negativo)
+    for (const u of insumosUsados) {
+      const req = storeInsumos.get(u.insumoId);
+      req.onsuccess = () => {
+        const insumo = req.result;
+        if (insumo) {
+          insumo.cantidad = (insumo.cantidad ?? 0) - u.cantidad;
+          storeInsumos.put(insumo);
+        }
+      };
+    }
+
+    // Sumar producto
+    const reqProd = storeProductos.get(productoId);
+    reqProd.onsuccess = () => {
+      const prod = reqProd.result;
+      if (prod) {
+        prod.cantidad = (prod.cantidad ?? 0) + cantidadProducida;
+        storeProductos.put(prod);
+      }
+    };
+
+    // Guardar histórico
+    tx.objectStore('producciones').put({
+      id,
+      productoId,
+      nombreProducto,
+      cantidadProducida,
+      insumosUsados,
+      fecha:     hoy(),
+      creadoEn:  ahora.toISOString(),
+    });
+
+    tx.oncomplete = () => resolve(id);
+  });
+}
+
+/**
+ * Cancela una venta (soft-delete) y restaura el stock de los productos vendidos.
+ * @param {string} ventaId
+ * @param {string} motivo
+ * @returns {Promise<void>}
+ */
+export async function cancelarVenta(ventaId, motivo) {
+  const db = await openDB();
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(['ventas', 'detalleVenta', 'productos'], 'readwrite');
+    tx.onerror = () => reject(tx.error);
+
+    // Marcar venta como cancelada
+    const storeVentas = tx.objectStore('ventas');
+    const reqVenta = storeVentas.get(ventaId);
+    reqVenta.onsuccess = () => {
+      const venta = reqVenta.result;
+      if (!venta) return;
+      venta.estado            = 'cancelada';
+      venta.motivoCancelacion = motivo;
+      venta.actualizadoEn     = new Date().toISOString();
+      storeVentas.put(venta);
+    };
+
+    // Restaurar stock de los productos vendidos
+    const storeDetalles = tx.objectStore('detalleVenta');
+    const reqDetalles   = storeDetalles.index('ventaId').getAll(ventaId);
+    reqDetalles.onsuccess = () => {
+      const detalles       = reqDetalles.result || [];
+      const storeProductos = tx.objectStore('productos');
+      for (const d of detalles) {
+        const reqProd = storeProductos.get(d.productoId);
+        reqProd.onsuccess = () => {
+          const prod = reqProd.result;
+          if (prod) {
+            prod.cantidad = (prod.cantidad ?? 0) + d.cantidad;
+            storeProductos.put(prod);
+          }
+        };
+      }
+    };
+
+    tx.oncomplete = () => resolve();
   });
 }
 
@@ -331,15 +460,16 @@ export async function guardarVentaCompleta(venta, detalles) {
  * @returns {Promise<Object>}
  */
 export async function exportarTodo() {
-  const [productos, insumos, costos, ventas, detalleVenta] = await Promise.all([
+  const [productos, insumos, costos, ventas, detalleVenta, producciones] = await Promise.all([
     getAll('productos'),
     getAll('insumos'),
     getAll('costos'),
     getAll('ventas'),
     getAll('detalleVenta'),
+    getAll('producciones'),
   ]);
 
-  return { productos, insumos, costos, ventas, detalleVenta };
+  return { productos, insumos, costos, ventas, detalleVenta, producciones };
 }
 
 /**
@@ -348,7 +478,7 @@ export async function exportarTodo() {
  * @param {Object} respaldo — Objeto con las 5 tablas
  */
 export async function importarRespaldo(respaldo) {
-  const stores = ['productos', 'insumos', 'costos', 'ventas', 'detalleVenta'];
+  const stores = ['productos', 'insumos', 'costos', 'ventas', 'detalleVenta', 'producciones'];
 
   for (const storeName of stores) {
     await clearStore(storeName);

@@ -232,6 +232,13 @@ export function cargarConfig() {
   try {
     const raw    = localStorage.getItem(CONFIG_KEY);
     const config = raw ? JSON.parse(raw) : _configDefault();
+
+    // Migración de versión (v1.x → v2.0.0)
+    if (config.version !== '2.0.0') {
+      config.version = '2.0.0';
+      try { localStorage.setItem(CONFIG_KEY, JSON.stringify(config)); } catch (e) { /* ignorar */ }
+    }
+
     store.setState({ config });
     return config;
   } catch (e) {
@@ -260,7 +267,7 @@ export function guardarConfig(patch) {
 function _configDefault() {
   return {
     nombreNegocio:    'Mi Negocio',
-    version:          '1.0.0',
+    version:          '2.0.0',
     tema:             'light',      // 'light' | 'dark'
     ultimaExportacion: null,
     logo:             null,         // Base64 string para el logo

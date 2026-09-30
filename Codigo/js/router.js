@@ -26,6 +26,8 @@ const ROUTES = {
   'insumos-costos': () => import('./views/insumos-hub.js'),
   'insumos':        () => import('./views/insumos.js'),
   'costos':         () => import('./views/costos.js'),
+  'produccion':     () => import('./views/produccion.js'),
+  'dashboard':      () => import('./views/dashboard.js'),
   'config':         () => import('./views/config.js'),
   'productos':      () => import('./views/productos.js'),
 };

@@ -1,23 +1,27 @@
 /**
- * costos.js — Registro de Costos y Gastos (Sprint 3)
+ * costos.js — Registro de Costos y Gastos (v2 · Sprint 2)
  *
- * HU-032: Registrar egreso (surtido de inventario, servicio, gasto operativo)
+ * Cambios v2:
+ *  - Selector de insumo real (insumoId).
+ *  - Si se selecciona un insumo → campo cantidad; al guardar aumenta su inventario.
+ *  - Si no es insumo → sin cantidad.
+ *  - Al eliminar un costo de insumo se revierte la cantidad.
  *
  * Estructura:
- *  - Formulario de alta rápido en la parte superior
- *  - Historial del mes actual debajo (lista cronológica descendente)
- *  - Concepto: texto libre + datalist de insumos para autocompletado
+ *  - Formulario de alta en la parte superior.
+ *  - Historial del mes actual debajo (lista cronológica descendente).
  */
 
-import { getAll, put, getCostosPorFecha } from '../db.js';
-import { toast }                           from '../components/toast.js';
-import { modal }                           from '../components/modal.js';
-import { esc, formatMXN, hoy, generarId, formatFecha } from '../utils.js';
-import { navegarAtras }                    from '../router.js';
+import { getAll, put, remove, getById, getCostosPorFecha } from '../db.js';
+import { toast } from '../components/toast.js';
+import { modal } from '../components/modal.js';
+import { esc, formatMXN, hoy, generarId, formatFecha, formatCantidad } from '../utils.js';
+import { navegarAtras } from '../router.js';
 
 export async function render(container) {
-  // Cargar insumos para el datalist de autocompletado
+  // Cargar insumos para el selector
   const insumos = await getAll('insumos');
+  insumos.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
 
   container.innerHTML = `
     <div class="view">
@@ -28,19 +32,28 @@ export async function render(container) {
 
       <!-- Formulario de registro de gasto -->
       <div class="card" style="margin-bottom: var(--space-5);">
-        <datalist id="insumos-list">
-          ${insumos.map(i => `<option value="${esc(i.nombre)}">`).join('')}
-        </datalist>
-
         <div class="form-group">
+          <label class="form-label" for="c-insumo">Insumo <span class="text-muted">(opcional)</span></label>
+          <select id="c-insumo" class="form-select">
+            <option value="">— Sin insumo —</option>
+            ${insumos.map(i => `<option value="${esc(i.id)}">${esc(i.nombre)}${i.unidad ? ' (' + esc(i.unidad) + ')' : ''}</option>`).join('')}
+          </select>
+        </div>
+
+        <div class="form-group" style="margin-top: var(--space-3);">
           <label class="form-label" for="c-concepto">Concepto *</label>
           <input id="c-concepto" type="text" class="form-input"
-                 list="insumos-list"
                  placeholder="Ej. Masa de maíz, Gas LP, Servicio de luz…"
                  maxlength="80" autocomplete="off">
         </div>
 
-        <div class="form-group">
+        <div class="form-group" id="c-cantidad-group" style="display:none; margin-top: var(--space-3);">
+          <label class="form-label" for="c-cantidad">Cantidad</label>
+          <input id="c-cantidad" type="number" class="form-input"
+                 placeholder="0.0" min="0" step="0.1" inputmode="decimal" autocomplete="off">
+        </div>
+
+        <div class="form-group" style="margin-top: var(--space-3);">
           <label class="form-label" for="c-categoria">Categoría</label>
           <select id="c-categoria" class="form-select">
             <option value="Insumo">🛒 Insumo / Materia prima</option>
@@ -50,49 +63,56 @@ export async function render(container) {
           </select>
         </div>
 
-        <div class="form-group">
+        <div class="form-group" style="margin-top: var(--space-3);">
           <label class="form-label" for="c-monto">Monto (MXN) *</label>
           <input id="c-monto" type="number" class="form-input"
                  placeholder="0.00" min="0.01" step="0.50"
                  inputmode="decimal" autocomplete="off">
         </div>
 
-        <div class="form-group">
+        <div class="form-group" style="margin-top: var(--space-3);">
           <label class="form-label" for="c-fecha">Fecha</label>
-          <input id="c-fecha" type="date" class="form-input"
-                 value="${hoy()}" max="${hoy()}">
+          <input id="c-fecha" type="date" class="form-input" value="${hoy()}" max="${hoy()}">
         </div>
 
-        <div class="form-group">
+        <div class="form-group" style="margin-top: var(--space-3);">
           <label class="form-label" for="c-notas">Notas <span class="text-muted">(opcional)</span></label>
           <textarea id="c-notas" class="form-textarea"
                     placeholder="Información adicional…"
                     maxlength="120"></textarea>
         </div>
 
-        <button class="btn btn-primary btn-block" id="btn-guardar-costo" style="margin-top: var(--space-2);">
+        <button class="btn btn-primary btn-block" id="btn-guardar-costo" style="margin-top: var(--space-4);">
           💸 Registrar Gasto
         </button>
       </div>
 
       <!-- Historial del mes -->
-      <div class="list-date-separator" id="historial-titulo">
-        Gastos de este mes
-      </div>
+      <div class="list-date-separator" id="historial-titulo">Gastos de este mes</div>
       <div id="lista-costos"></div>
-
     </div>
   `;
 
-  // Botón regresar
-  container.querySelector('#btn-back').addEventListener('click', navegarAtras);
+  // Selector de insumo → mostrar/ocultar cantidad y autocompletar
+  const insumoSelect  = container.querySelector('#c-insumo');
+  const conceptoInput = container.querySelector('#c-concepto');
+  const categoriaSel  = container.querySelector('#c-categoria');
+  const cantidadGroup = container.querySelector('#c-cantidad-group');
 
-  // Botón guardar
-  container.querySelector('#btn-guardar-costo').addEventListener('click', () => {
-    _guardarCosto(container);
+  insumoSelect.addEventListener('change', () => {
+    const insumo = insumos.find(i => i.id === insumoSelect.value);
+    if (insumo) {
+      conceptoInput.value = insumo.nombre;
+      categoriaSel.value  = 'Insumo';
+      cantidadGroup.style.display = '';
+    } else {
+      cantidadGroup.style.display = 'none';
+    }
   });
 
-  // Render historial del mes actual
+  container.querySelector('#btn-back').addEventListener('click', navegarAtras);
+  container.querySelector('#btn-guardar-costo').addEventListener('click', () => _guardarCosto(container, insumos));
+
   await _renderHistorial(container);
 
   return undefined;
@@ -102,12 +122,14 @@ export async function render(container) {
 // GUARDAR COSTO
 // ══════════════════════════════════════════════════════════
 
-async function _guardarCosto(container) {
-  const concepto  = container.querySelector('#c-concepto')?.value.trim();
-  const categoria = container.querySelector('#c-categoria')?.value;
-  const montoStr  = container.querySelector('#c-monto')?.value;
-  const fecha     = container.querySelector('#c-fecha')?.value;
-  const notas     = container.querySelector('#c-notas')?.value.trim();
+async function _guardarCosto(container, insumos) {
+  const insumoId   = container.querySelector('#c-insumo')?.value;
+  const concepto   = container.querySelector('#c-concepto')?.value.trim();
+  const categoria  = container.querySelector('#c-categoria')?.value;
+  const montoStr   = container.querySelector('#c-monto')?.value;
+  const fecha      = container.querySelector('#c-fecha')?.value;
+  const notas      = container.querySelector('#c-notas')?.value.trim();
+  const cantidadStr = container.querySelector('#c-cantidad')?.value;
 
   // Validaciones
   if (!concepto) {
@@ -128,23 +150,45 @@ async function _guardarCosto(container) {
     return;
   }
 
+  let cantidad = null;
+  if (insumoId) {
+    cantidad = parseFloat(cantidadStr);
+    if (!Number.isFinite(cantidad) || cantidad <= 0) {
+      toast.error('Ingresa la cantidad del insumo.');
+      container.querySelector('#c-cantidad')?.focus();
+      return;
+    }
+  }
+
   const nuevo = {
-    id:          generarId('costo'),
+    id:        generarId('costo'),
     concepto,
-    categoria:   categoria || 'Otro',
+    categoria: categoria || 'Otro',
+    insumoId:  insumoId || null,
+    cantidad,
     monto,
     fecha,
-    notas:       notas || '',
-    creadoEn:    new Date().toISOString(),
+    notas:     notas || '',
+    creadoEn:  new Date().toISOString(),
   };
+
+  // Si es un insumo, aumentar su inventario
+  if (insumoId) {
+    let insumo = insumos.find(i => i.id === insumoId);
+    if (!insumo) insumo = await getById('insumos', insumoId);
+    if (insumo) {
+      await put('insumos', { ...insumo, cantidad: (insumo.cantidad ?? 0) + cantidad });
+    }
+  }
 
   await put('costos', nuevo);
   toast.success(`Gasto "${concepto}" registrado — ${formatMXN(monto)}`);
 
-  // Limpiar el formulario (mantener fecha y categoría)
+  // Limpiar el formulario (mantener fecha)
   container.querySelector('#c-concepto').value = '';
   container.querySelector('#c-monto').value    = '';
   container.querySelector('#c-notas').value    = '';
+  container.querySelector('#c-cantidad').value = '';
   container.querySelector('#c-concepto').focus();
 
   // Actualizar historial
@@ -160,9 +204,9 @@ async function _renderHistorial(container) {
   if (!lista) return;
 
   // Calcular el primer y último día del mes actual
-  const ahora   = new Date();
-  const inicio  = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-01`;
-  const fin     = hoy();
+  const ahora  = new Date();
+  const inicio = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-01`;
+  const fin    = hoy();
 
   const costos = await getCostosPorFecha(inicio, fin);
   // Ya vienen ordenados descendente desde db.js
@@ -192,8 +236,8 @@ async function _renderHistorial(container) {
   lista.querySelectorAll('.btn-eliminar-costo').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
-      const id      = btn.dataset.id;
-      const costo   = costos.find(c => c.id === id);
+      const id    = btn.dataset.id;
+      const costo = costos.find(c => c.id === id);
       if (!costo) return;
 
       const ok = await modal.confirmar(
@@ -204,7 +248,14 @@ async function _renderHistorial(container) {
       );
       if (!ok) return;
 
-      const { remove } = await import('../db.js');
+      // Revertir inventario si fue un costo de insumo
+      if (costo.insumoId && costo.cantidad) {
+        const insumo = await getById('insumos', costo.insumoId);
+        if (insumo) {
+          await put('insumos', { ...insumo, cantidad: (insumo.cantidad ?? 0) - costo.cantidad });
+        }
+      }
+
       await remove('costos', id);
       toast.success('Gasto eliminado.');
       await _renderHistorial(container);
@@ -222,6 +273,10 @@ const ICONOS_CATEGORIA = {
 
 function _tarjetaCosto(c) {
   const icono = ICONOS_CATEGORIA[c.categoria] ?? '💸';
+  const cantidadInfo = (c.insumoId && c.cantidad)
+    ? `<span>· +${formatCantidad(c.cantidad)}</span>`
+    : '';
+
   return `
     <div class="costo-card">
       <div class="costo-card__icon">${icono}</div>
@@ -231,6 +286,7 @@ function _tarjetaCosto(c) {
           <span>${formatFecha(c.fecha)}</span>
           <span>·</span>
           <span>${esc(c.categoria)}</span>
+          ${cantidadInfo}
           ${c.notas ? `<span>· ${esc(c.notas)}</span>` : ''}
         </div>
       </div>

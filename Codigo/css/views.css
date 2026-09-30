@@ -119,7 +119,7 @@
 }
 
 /* ══════════════════════════════════════════════════════════
-   HUB — Insumos y Costos
+   HUB — Producción, Inventario y Costos
    ══════════════════════════════════════════════════════════ */
 
 .hub-grid {
@@ -277,6 +277,12 @@
   font-size: var(--font-size-xs);
   color: var(--color-primary);
   font-weight: var(--font-weight-bold);
+}
+
+.product-btn__stock {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-semibold);
 }
 
 /* ── Panel de la Comanda (panel inferior del POS) ── */
@@ -794,4 +800,87 @@
   letter-spacing: 0.08em;
   color: var(--color-text-muted);
   padding: var(--space-3) 0 var(--space-1);
+}
+
+/* ══════════════════════════════════════════════════════════
+   PRODUCCIÓN
+   ══════════════════════════════════════════════════════════ */
+
+.produccion-insumo-row {
+  display: grid;
+  grid-template-columns: 1fr 110px 40px;
+  gap: var(--space-2);
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.produccion-insumo-row .form-input {
+  min-height: 44px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   DASHBOARD
+   ══════════════════════════════════════════════════════════ */
+
+.dash-periodo {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.dash-periodo .btn {
+  flex: 1;
+  padding: var(--space-2);
+  min-height: 40px;
+}
+
+.dash-pie-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.dash-legend {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.dash-legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  padding: var(--space-1) 0;
+}
+
+.dash-legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.dash-legend-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text);
+}
+
+.dash-legend-pct {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
+.dash-legend-ingreso {
+  min-width: 72px;
+  text-align: right;
+  color: var(--color-text);
+  font-weight: var(--font-weight-semibold);
 }

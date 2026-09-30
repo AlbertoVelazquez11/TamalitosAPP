@@ -83,14 +83,17 @@ function _fila(arr) {
 async function _csvVentas(inicio, fin) {
   const ventas = await getVentasPorFecha(inicio, fin);
   const lineas = [
-    _fila(['Fecha', 'Hora', 'Productos', 'Cantidades', 'Subtotal', 'Descuento', 'Total', 'Método de Pago', 'Estado']),
+    _fila(['Fecha', 'Hora', 'Productos', 'Cantidades', 'Subtotal', 'Descuento', 'Total', 'Tipo', 'Estado de Pago', 'Motivo', 'Estado']),
   ];
 
   for (const v of ventas) {
     const detalles   = await getDetallesByVentaId(v.id);
     const productos  = detalles.map(d => `${d.nombreProducto} x${d.cantidad}`).join('; ');
     const cantidades = detalles.reduce((s, d) => s + d.cantidad, 0);
-    const metodo     = v.estadoPago === 'pendiente' ? 'Efectivo (Fiado)' : 'Efectivo';
+
+    const tipo       = v.tipo === 'noIngreso' ? 'Sin ingreso' : 'Venta';
+    const estadoPago = v.tipo === 'noIngreso' ? '—' : (v.estadoPago === 'pendiente' ? 'Fiada' : 'Pagada');
+    const motivo     = v.tipo === 'noIngreso' ? (v.motivoNoIngreso || '') : '';
     const estado     = v.estado === 'cancelada' ? 'Cancelada' : 'Cobrada';
 
     lineas.push(_fila([
@@ -101,7 +104,9 @@ async function _csvVentas(inicio, fin) {
       (v.subtotal ?? 0).toFixed(2),
       (v.descuento ?? 0).toFixed(2),
       (v.total ?? 0).toFixed(2),
-      metodo,
+      tipo,
+      estadoPago,
+      motivo,
       estado,
     ]));
   }
@@ -112,7 +117,7 @@ async function _csvVentas(inicio, fin) {
 async function _csvGastos(inicio, fin) {
   const costos = await getCostosPorFecha(inicio, fin);
   const lineas = [
-    _fila(['Fecha', 'Concepto', 'Categoría', 'Monto', 'Notas']),
+    _fila(['Fecha', 'Concepto', 'Categoría', 'Cantidad', 'Monto', 'Notas']),
   ];
 
   for (const c of costos) {
@@ -120,6 +125,7 @@ async function _csvGastos(inicio, fin) {
       c.fecha,
       c.concepto,
       c.categoria,
+      c.cantidad != null ? c.cantidad : '',
       (c.monto ?? 0).toFixed(2),
       c.notas || '',
     ]));
@@ -198,7 +204,7 @@ export async function exportarCSV(tipo, periodo) {
 // RESPALDO JSON — EXPORTAR / VALIDAR / IMPORTAR
 // ══════════════════════════════════════════════════════════
 
-const TABLAS = ['productos', 'insumos', 'costos', 'ventas', 'detalleVenta'];
+const TABLAS = ['productos', 'insumos', 'costos', 'ventas', 'detalleVenta', 'producciones'];
 
 /**
  * Exporta todas las tablas de IndexedDB como archivo JSON y lo comparte.
@@ -208,7 +214,7 @@ export async function exportarRespaldoJSON() {
   const datos = await exportarTodo();
   const json  = JSON.stringify({
     _formato:     'tamalitos-respaldo',
-    _version:     '1.0.0',
+    _version:     '2.0.0',
     _exportadoEn: new Date().toISOString(),
     ...datos,
   }, null, 2);
