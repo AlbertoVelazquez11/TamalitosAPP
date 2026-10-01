@@ -30,7 +30,7 @@ export async function render(container) {
     <div class="view">
       <div class="view-header">
         <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">←</button>
-        <h1 class="view-header__title">Inventario de Insumos</h1>
+        <h1 class="view-header__title">Insumos</h1>
         <div class="view-header__actions">
           <button class="btn btn-primary btn-sm" id="btn-nuevo">+ Nuevo</button>
         </div>
