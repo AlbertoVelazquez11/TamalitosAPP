@@ -39,23 +39,23 @@ TamalitosAPP/
 | POS | Terminal de Venta | `#/venta` | Grilla con stock, comanda, cobro, fiado y pedidos sin ingreso |
 | Historial | Ventas | `#/historial` | Filtro por fecha, resumen (ingresos/gastos/utilidad), cancelación y pago de fiados |
 | Producción | Registrar Producción | `#/produccion` | Producto + cantidad, insumos usados; resta insumos y suma producto |
-| Inventario | Insumos | `#/insumos` | Catálogo con cantidad (stock), edición y ajuste manual |
+| Recetas | Recetas y Calculadora | `#/recetas` | Receta por producto, insumos/cantidades y calculadora de producción |
+| Perfiles | PDV Activo / Sucursal | `#/perfiles` | Perfiles de venta y selección del perfil activo |
+| Inventario | Insumos | `#/insumos` | Catálogo con cantidad (stock), costo unitario, edición y ajuste manual |
 | Costos | Registro de Gastos | `#/costos` | Egresos con selector de insumo, cantidad y suma al inventario |
-| Dashboard | Venta por producto | `#/dashboard` | Gráfica de pastel con %, ingresos y selector de período |
+| Dashboard | Venta por producto | `#/dashboard` | Gráficas de producto, tipo de ingreso, perfil y costo por producción |
 | Config | Configuración | `#/config` | Nombre/logo, tema, productos, exportar CSV y respaldo |
 | Productos | CRUD Productos | `#/productos` | Alta, edición, desactivación y stock |
 
 ---
 
-## 🆕 Novedades v2.0.0
+## 🆕 Novedades v3.0.0
 
-- **Inventario con stock:** insumos y productos con cantidad; la producción suma productos y resta insumos; los costos de insumo suman inventario.
-- **Producción:** registro con histórico y aviso de stock negativo.
-- **Venta con stock:** el POS muestra disponibilidad y descuenta al vender.
-- **Pedidos sin ingreso:** muestra, regalo o merma con motivo.
-- **Fiados:** se marca el pago y el ingreso cuenta al pagar.
-- **Dashboard:** venta por producto (pastel + %) e ingresos por período.
-- **Exportación:** CSV con tipo, estado de pago y motivo; respaldo incluye producciones.
+- **Recetas:** receta por producto (1:1) con insumos/cantidades y calculadora de producción (costo aproximado).
+- **Producción con receta:** precarga insumos proporcionales y alerta de insumos faltantes.
+- **Costo de insumos:** `costoUnitario` por insumo, con autollenado desde el último costo.
+- **Perfiles (PDV):** perfiles de venta con perfil activo; ventas asociadas a perfil.
+- **Dashboard ampliado:** períodos día / 15 días / mes / 3 meses / año; costo por producción y ventas por perfil.
 
 ---
 
@@ -67,6 +67,7 @@ TamalitosAPP/
 - [Fase 4 — Plan de Trabajo en 5 Sprints](Documentacion/fase4_plan_trabajo.md)
 - [Sprint 5 — Auditoría iOS, QA y Lanzamiento](Documentacion/sprint5_qa.md)
 - [v2.0.0 — Análisis y Plan por Fases](Documentacion/v2.0.0_cambios.md)
+- [v3.0.0 — Decisiones y Plan por Sprints](Documentacion/v3.0.0_cambios.md)
 
 ---
 
@@ -80,7 +81,7 @@ TamalitosAPP/
 | 4 | Historial (filtros, utilidad, cancelación 24h), exportación CSV y respaldo JSON | ✅ |
 | 5 | Pulido iOS, QA y lanzamiento v1.0.0 | ✅ |
 
-> **v1.0.0 finalizada** (base en `main`). La **v2.0.0** se desarrolla en la rama `develop`.
+> **v2.0.0 finalizada** (base en `main`). La **v3.0.0** se desarrolla en la rama `develop-v3`.
 
 ### 📤 Exportación y respaldo (Sprint 4)
 - **CSV** de ventas y gastos filtrado por día, semana, mes o año (Web Share API + fallback de descarga).

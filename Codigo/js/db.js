@@ -564,5 +564,12 @@ export async function importarRespaldo(respaldo) {
       await put(storeName, record);
     }
   }
+
+  // Garantizar que exista al menos el perfil "General"
+  const perfiles = await getAll('perfiles');
+  if (perfiles.length === 0) {
+    const ahora = new Date().toISOString();
+    await put('perfiles', { id: 'perfil_general', nombre: 'General', creadoEn: ahora, actualizadoEn: ahora });
+  }
 }
 

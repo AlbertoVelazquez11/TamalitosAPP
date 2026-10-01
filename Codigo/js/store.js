@@ -235,8 +235,8 @@ export function cargarConfig() {
 
     // Migraciones (v1 → v2 → v3)
     let cambiado = false;
-    if (config.version !== '2.0.0') {
-      config.version = '2.0.0';
+    if (config.version !== '3.0.0') {
+      config.version = '3.0.0';
       cambiado = true;
     }
     if (!config.perfilActivoId) {
@@ -275,7 +275,7 @@ export function guardarConfig(patch) {
 function _configDefault() {
   return {
     nombreNegocio:    'Mi Negocio',
-    version:          '2.0.0',
+    version:          '3.0.0',
     tema:             'light',      // 'light' | 'dark'
     ultimaExportacion: null,
     logo:             null,         // Base64 string para el logo

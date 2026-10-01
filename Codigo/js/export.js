@@ -223,7 +223,7 @@ export async function exportarRespaldoJSON() {
   const datos = await exportarTodo();
   const json  = JSON.stringify({
     _formato:     'tamalitos-respaldo',
-    _version:     '2.0.0',
+    _version:     '3.0.0',
     _exportadoEn: new Date().toISOString(),
     ...datos,
   }, null, 2);
