@@ -335,6 +335,16 @@ export async function getUltimoCostoUnitario(insumoId) {
 }
 
 /**
+ * Devuelve producciones dentro de un rango de fechas (YYYY-MM-DD),
+ * ordenadas de más reciente a más antigua.
+ */
+export async function getProduccionesPorFecha(fechaInicio, fechaFin) {
+  const range = IDBKeyRange.bound(fechaInicio, fechaFin);
+  const producciones = await getAll('producciones', 'fecha', range);
+  return producciones.sort((a, b) => (b.creadoEn || '').localeCompare(a.creadoEn || ''));
+}
+
+/**
  * Calcula el resumen financiero de un día específico.
  * @param {string} fecha  — formato YYYY-MM-DD
  * @returns {Promise<{totalVentas: number, numVentas: number, totalGastos: number, utilidad: number}>}

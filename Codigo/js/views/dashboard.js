@@ -11,7 +11,7 @@
  *  - Los "ingresos" por producto usan el precio de venta (snapshot), no el precio actual.
  */
 
-import { getVentasPorFecha, getDetallesByVentaId } from '../db.js';
+import { getVentasPorFecha, getDetallesByVentaId, getProduccionesPorFecha } from '../db.js';
 import { rangoDePeriodo } from '../export.js';
 import { esc, formatMXN, formatCantidad } from '../utils.js';
 import { navegarAtras } from '../router.js';
@@ -20,8 +20,9 @@ const COLORES = ['#FFAFCC', '#CDB4DB', '#A2D2FF', '#FFC8DD', '#b8a0e0', '#f0a855
 
 const PERIODOS = [
   { id: 'dia',    label: 'Hoy' },
-  { id: 'semana', label: 'Semana' },
+  { id: '15dias', label: '15 días' },
   { id: 'mes',    label: 'Mes' },
+  { id: '3meses', label: '3 meses' },
   { id: 'anio',   label: 'Año' },
 ];
 
@@ -48,6 +49,14 @@ export async function render(container) {
       <!-- Gráfica por tipo de ingreso -->
       <div class="section-title" style="margin-top: var(--space-5);">Por tipo de ingreso</div>
       <div id="dash-pie-estado"></div>
+
+      <!-- Ventas por perfil -->
+      <div class="section-title" style="margin-top: var(--space-5);">Ventas por perfil</div>
+      <div id="dash-pie-perfiles"></div>
+
+      <!-- Costo por producción -->
+      <div class="section-title" style="margin-top: var(--space-5);">Costo por producción</div>
+      <div id="dash-costos"></div>
     </div>
   `;
 
@@ -80,6 +89,7 @@ async function _cargar(container, periodo) {
   const { inicio, fin } = rangoDePeriodo(periodo);
   const ventas    = await getVentasPorFecha(inicio, fin);
   const vigentes  = ventas.filter(v => v.estado !== 'cancelada');
+  const producciones = await getProduccionesPorFecha(inicio, fin);
 
   // Consultar detalles en paralelo
   const detallesAll = await Promise.all(
@@ -87,6 +97,7 @@ async function _cargar(container, periodo) {
   );
 
   const porProducto = new Map(); // productoId -> { nombre, cantidad, ingresos }
+  const porPerfil   = new Map(); // perfilId -> { nombre, cantidad, ingresos }
   let ingresos        = 0;
   let sinIngresoCount = 0;
   let sinIngresoMonto = 0;
@@ -106,6 +117,15 @@ async function _cargar(container, periodo) {
     if (esNoIngreso) { sinIngresoCount++; sinIngresoMonto += (v.total || 0); }
     if (esFiada)     { fiadasCount++;     fiadasMonto     += (v.total || 0); }
 
+    // Agregación por perfil
+    const perfilKey    = v.perfilId || 'perfil_general';
+    const perfilNombre = v.perfilNombre || 'General';
+    let aggPerfil = porPerfil.get(perfilKey);
+    if (!aggPerfil) {
+      aggPerfil = { nombre: perfilNombre, cantidad: 0, ingresos: 0 };
+      porPerfil.set(perfilKey, aggPerfil);
+    }
+
     for (const d of detalles) {
       let agg = porProducto.get(d.productoId);
       if (!agg) {
@@ -116,6 +136,9 @@ async function _cargar(container, periodo) {
       if (esIngreso)   { agg.ingresos += d.subtotalLinea; qtyIngresos += d.cantidad; }
       if (esFiada)     qtyFiadas     += d.cantidad;
       if (esNoIngreso) qtySinIngreso += d.cantidad;
+
+      aggPerfil.cantidad += d.cantidad;
+      if (esIngreso) aggPerfil.ingresos += d.subtotalLinea;
     }
   });
 
@@ -146,6 +169,12 @@ async function _cargar(container, periodo) {
     { nombre: 'Sin ingreso', cantidad: qtySinIngreso, ingresos: sinIngresoMonto },
   ];
   _renderPie(container.querySelector('#dash-pie-estado'), estadoData);
+
+  // Ventas por perfil
+  _renderPie(container.querySelector('#dash-pie-perfiles'), [...porPerfil.values()]);
+
+  // Costo por producción
+  _renderCostosBarras(container.querySelector('#dash-costos'), producciones);
 }
 
 // ══════════════════════════════════════════════════════════
@@ -210,4 +239,54 @@ function _buildPiePaths(slices, cx, cy, r) {
 
     return `<path d="M ${cx} ${cy} L ${x1.toFixed(3)} ${y1.toFixed(3)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(3)} ${y2.toFixed(3)} Z" fill="${s.color}" stroke="var(--color-bg)" stroke-width="2"></path>`;
   }).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+// GRÁFICA DE BARRAS — COSTO POR PRODUCCIÓN
+// ══════════════════════════════════════════════════════════
+
+function _renderCostosBarras(wrap, producciones) {
+  if (!producciones || producciones.length === 0) {
+    wrap.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state__icon">🏭</div>
+        <p class="empty-state__title">Sin producciones</p>
+        <p class="empty-state__desc">No hay producciones registradas en este período.</p>
+      </div>`;
+    return;
+  }
+
+  const data = [...producciones].sort((a, b) =>
+    (a.fecha || '').localeCompare(b.fecha || '') || (a.creadoEn || '').localeCompare(b.creadoEn || '')
+  );
+
+  const maxAltura  = Math.max(...data.map(p => p.cantidadProducida || 0), 1);
+  const totalCosto = data.reduce((s, p) => s + (p.costoTotal || 0), 0);
+
+  const W = 320;
+  const H = 220;
+  const padX = 10;
+  const padTop = 12;
+  const padBottom = 8;
+  const anchoBarra = Math.max(4, Math.min(48, (W - padX * 2) / data.length));
+
+  const bars = data.map((p, i) => {
+    const h = ((p.cantidadProducida || 0) / maxAltura) * (H - padTop - padBottom);
+    const x = padX + i * anchoBarra;
+    const y = H - padBottom - h;
+    return `<rect x="${x}" y="${y.toFixed(1)}" width="${anchoBarra - 2}" height="${h.toFixed(1)}" rx="2"
+                  fill="var(--color-primary)">
+              <title>${esc(p.nombreProducto)} — ${formatCantidad(p.cantidadProducida)} ud — ${formatMXN(p.costoTotal || 0)}</title>
+            </rect>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <div class="dash-pie-wrap">
+      <svg width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="Costo por producción">
+        ${bars}
+      </svg>
+      <p class="text-sm text-muted" style="text-align:center;">
+        ${data.length} producción${data.length !== 1 ? 'es' : ''} · Costo total ${formatMXN(totalCosto)}
+      </p>
+    </div>`;
 }

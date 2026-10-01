@@ -42,8 +42,17 @@ export function rangoDePeriodo(periodo) {
       lunes.setDate(lunes.getDate() - diff);
       return { inicio: _aISO(lunes), fin };
     }
+    case '15dias': {
+      const d = new Date(now);
+      d.setDate(d.getDate() - 14);
+      return { inicio: _aISO(d), fin };
+    }
     case 'mes':
       return { inicio: `${now.getFullYear()}-${_pad(now.getMonth() + 1)}-01`, fin };
+    case '3meses': {
+      const d = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+      return { inicio: _aISO(d), fin };
+    }
     case 'anio':
       return { inicio: `${now.getFullYear()}-01-01`, fin };
     case 'dia':
