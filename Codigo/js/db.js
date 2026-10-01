@@ -2,14 +2,14 @@
  * db.js — Wrapper de IndexedDB para TamalitosAPP
  *
  * Proporciona una API async/await limpia sobre IndexedDB.
- * Versión de esquema: 2
- * Object Stores: productos, insumos, costos, ventas, detalleVenta, producciones
+ * Versión de esquema: 3
+ * Object Stores: productos, insumos, costos, ventas, detalleVenta, producciones, recetas, perfiles
  */
 
 import { hoy } from './utils.js';
 
 const DB_NAME    = 'TamalitosAPP';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 // Singleton de la conexión a la base de datos
 let _db = null;
@@ -27,7 +27,7 @@ export function openDB() {
 
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
-      _crearEsquema(db, event.oldVersion);
+      _crearEsquema(db, event.oldVersion, event.target.transaction);
     };
 
     request.onsuccess = (event) => {
@@ -54,7 +54,7 @@ export function openDB() {
  * Crea el esquema de Object Stores e índices.
  * Solo se ejecuta durante onupgradeneeded.
  */
-function _crearEsquema(db, oldVersion) {
+function _crearEsquema(db, oldVersion, tx) {
   // ── Productos (catálogo de venta) ────────────────────────
   if (!db.objectStoreNames.contains('productos')) {
     const store = db.createObjectStore('productos', { keyPath: 'id' });
@@ -99,7 +99,56 @@ function _crearEsquema(db, oldVersion) {
     store.createIndex('productoId', 'productoId', { unique: false });
   }
 
+  // ── Recetas (1:1 con producto) ─────────────────────────────
+  if (!db.objectStoreNames.contains('recetas')) {
+    const store = db.createObjectStore('recetas', { keyPath: 'id' });
+    store.createIndex('productoId', 'productoId', { unique: true });
+  }
+
+  // ── Perfiles (PDV / Sucursal) ──────────────────────────────
+  if (!db.objectStoreNames.contains('perfiles')) {
+    const store = db.createObjectStore('perfiles', { keyPath: 'id' });
+    store.createIndex('nombre', 'nombre', { unique: false });
+  }
+
+  // Migración v2 → v3: perfil "General" + backfill de ventas
+  if (oldVersion < 3 && tx) {
+    _migrarV3(tx);
+  }
+
   console.log('[DB] Esquema creado/actualizado correctamente.');
+}
+
+/**
+ * Migración v2 → v3:
+ *  - Crea el perfil por defecto "General".
+ *  - Asigna "General" a las ventas existentes sin perfil.
+ */
+function _migrarV3(tx) {
+  const ahora     = new Date().toISOString();
+  const generalId = 'perfil_general';
+
+  tx.objectStore('perfiles').put({
+    id:           generalId,
+    nombre:       'General',
+    creadoEn:     ahora,
+    actualizadoEn: ahora,
+  });
+
+  const ventasStore = tx.objectStore('ventas');
+  const req = ventasStore.openCursor();
+  req.onsuccess = () => {
+    const cursor = req.result;
+    if (cursor) {
+      const venta = cursor.value;
+      if (!venta.perfilId) {
+        venta.perfilId      = generalId;
+        venta.perfilNombre  = 'General';
+        cursor.update(venta);
+      }
+      cursor.continue();
+    }
+  };
 }
 
 // ══════════════════════════════════════════════════════════
@@ -271,6 +320,31 @@ export async function getCostosPorFecha(fechaInicio, fechaFin) {
 }
 
 /**
+ * Devuelve el costo unitario del último costo registrado de un insumo
+ * (monto / cantidad). Útil para autocompletar el costoUnitario.
+ * @param {string} insumoId
+ * @returns {Promise<number|null>}
+ */
+export async function getUltimoCostoUnitario(insumoId) {
+  const costos = await getAll('costos');
+  const delInsumo = costos
+    .filter(c => c.insumoId === insumoId && c.cantidad > 0)
+    .sort((a, b) => (b.creadoEn || '').localeCompare(a.creadoEn || ''));
+  const ultimo = delInsumo[0];
+  return ultimo ? (ultimo.monto / ultimo.cantidad) : null;
+}
+
+/**
+ * Devuelve producciones dentro de un rango de fechas (YYYY-MM-DD),
+ * ordenadas de más reciente a más antigua.
+ */
+export async function getProduccionesPorFecha(fechaInicio, fechaFin) {
+  const range = IDBKeyRange.bound(fechaInicio, fechaFin);
+  const producciones = await getAll('producciones', 'fecha', range);
+  return producciones.sort((a, b) => (b.creadoEn || '').localeCompare(a.creadoEn || ''));
+}
+
+/**
  * Calcula el resumen financiero de un día específico.
  * @param {string} fecha  — formato YYYY-MM-DD
  * @returns {Promise<{totalVentas: number, numVentas: number, totalGastos: number, utilidad: number}>}
@@ -358,7 +432,7 @@ export async function guardarVentaCompleta(venta, detalles) {
  * @param {Array}  produccion.insumosUsados — [{ insumoId, nombreInsumo, cantidad }]
  * @returns {Promise<string>} — id de la producción creada
  */
-export async function guardarProduccion({ productoId, nombreProducto, cantidadProducida, insumosUsados }) {
+export async function guardarProduccion({ productoId, nombreProducto, cantidadProducida, insumosUsados, costoTotal = 0 }) {
   const db = await openDB();
 
   return new Promise((resolve, reject) => {
@@ -399,6 +473,7 @@ export async function guardarProduccion({ productoId, nombreProducto, cantidadPr
       nombreProducto,
       cantidadProducida,
       insumosUsados,
+      costoTotal,
       fecha:     hoy(),
       creadoEn:  ahora.toISOString(),
     });
@@ -460,16 +535,18 @@ export async function cancelarVenta(ventaId, motivo) {
  * @returns {Promise<Object>}
  */
 export async function exportarTodo() {
-  const [productos, insumos, costos, ventas, detalleVenta, producciones] = await Promise.all([
+  const [productos, insumos, costos, ventas, detalleVenta, producciones, recetas, perfiles] = await Promise.all([
     getAll('productos'),
     getAll('insumos'),
     getAll('costos'),
     getAll('ventas'),
     getAll('detalleVenta'),
     getAll('producciones'),
+    getAll('recetas'),
+    getAll('perfiles'),
   ]);
 
-  return { productos, insumos, costos, ventas, detalleVenta, producciones };
+  return { productos, insumos, costos, ventas, detalleVenta, producciones, recetas, perfiles };
 }
 
 /**
@@ -478,7 +555,7 @@ export async function exportarTodo() {
  * @param {Object} respaldo — Objeto con las 5 tablas
  */
 export async function importarRespaldo(respaldo) {
-  const stores = ['productos', 'insumos', 'costos', 'ventas', 'detalleVenta', 'producciones'];
+  const stores = ['productos', 'insumos', 'costos', 'ventas', 'detalleVenta', 'producciones', 'recetas', 'perfiles'];
 
   for (const storeName of stores) {
     await clearStore(storeName);
@@ -486,6 +563,13 @@ export async function importarRespaldo(respaldo) {
     for (const record of registros) {
       await put(storeName, record);
     }
+  }
+
+  // Garantizar que exista al menos el perfil "General"
+  const perfiles = await getAll('perfiles');
+  if (perfiles.length === 0) {
+    const ahora = new Date().toISOString();
+    await put('perfiles', { id: 'perfil_general', nombre: 'General', creadoEn: ahora, actualizadoEn: ahora });
   }
 }
 

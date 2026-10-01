@@ -42,8 +42,17 @@ export function rangoDePeriodo(periodo) {
       lunes.setDate(lunes.getDate() - diff);
       return { inicio: _aISO(lunes), fin };
     }
+    case '15dias': {
+      const d = new Date(now);
+      d.setDate(d.getDate() - 14);
+      return { inicio: _aISO(d), fin };
+    }
     case 'mes':
       return { inicio: `${now.getFullYear()}-${_pad(now.getMonth() + 1)}-01`, fin };
+    case '3meses': {
+      const d = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+      return { inicio: _aISO(d), fin };
+    }
     case 'anio':
       return { inicio: `${now.getFullYear()}-01-01`, fin };
     case 'dia':
@@ -204,7 +213,7 @@ export async function exportarCSV(tipo, periodo) {
 // RESPALDO JSON — EXPORTAR / VALIDAR / IMPORTAR
 // ══════════════════════════════════════════════════════════
 
-const TABLAS = ['productos', 'insumos', 'costos', 'ventas', 'detalleVenta', 'producciones'];
+const TABLAS = ['productos', 'insumos', 'costos', 'ventas', 'detalleVenta', 'producciones', 'recetas', 'perfiles'];
 
 /**
  * Exporta todas las tablas de IndexedDB como archivo JSON y lo comparte.
@@ -214,7 +223,7 @@ export async function exportarRespaldoJSON() {
   const datos = await exportarTodo();
   const json  = JSON.stringify({
     _formato:     'tamalitos-respaldo',
-    _version:     '2.0.0',
+    _version:     '3.0.0',
     _exportadoEn: new Date().toISOString(),
     ...datos,
   }, null, 2);

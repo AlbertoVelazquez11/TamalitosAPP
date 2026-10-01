@@ -15,7 +15,7 @@
 import { getAll, guardarProduccion } from '../db.js';
 import { modal }     from '../components/modal.js';
 import { toast }     from '../components/toast.js';
-import { esc, formatCantidad } from '../utils.js';
+import { esc, formatCantidad, ceil1 } from '../utils.js';
 import { navegar, navegarAtras } from '../router.js';
 
 export async function render(container) {
@@ -71,10 +71,13 @@ function _renderIntro(container) {
 async function _renderFormulario(container) {
   const contenido = container.querySelector('#produccion-contenido');
 
-  const [insumos, productos] = await Promise.all([
+  const [insumos, productos, recetas] = await Promise.all([
     getAll('insumos'),
     getAll('productos'),
+    getAll('recetas'),
   ]);
+
+  const recetaPorProducto = new Map(recetas.map(r => [r.productoId, r]));
 
   const activos = productos
     .filter(p => p.activo !== false)
@@ -114,7 +117,7 @@ async function _renderFormulario(container) {
       <div id="prod-insumos-lista">
         ${insumos.length === 0 ? `
           <p class="text-sm text-muted" style="padding: var(--space-2) var(--space-1);">
-            No hay insumos registrados. Agrégalos en Inventario de Insumos.
+            No hay insumos registrados. Agrégalos en Insumos.
           </p>` : ''}
       </div>
       ${insumos.length > 0 ? `
@@ -131,18 +134,29 @@ async function _renderFormulario(container) {
 
   const listaEl = contenido.querySelector('#prod-insumos-lista');
 
+  const precargar = () => {
+    const pid = contenido.querySelector('#prod-producto')?.value;
+    const qty = Number(contenido.querySelector('#prod-cantidad')?.value);
+    const receta = pid ? recetaPorProducto.get(pid) : null;
+    _precargarInsumos(listaEl, receta, qty, insumos);
+  };
+
   if (insumos.length > 0) {
     contenido.querySelector('#btn-agregar-insumo')
-      .addEventListener('click', () => listaEl.appendChild(_crearFilaInsumo(insumos)));
+      .addEventListener('click', () => listaEl.appendChild(_crearFilaInsumo(insumos, null)));
+
+    contenido.querySelector('#prod-producto')?.addEventListener('change', precargar);
+    contenido.querySelector('#prod-cantidad')?.addEventListener('input', precargar);
+
     // Fila inicial
-    listaEl.appendChild(_crearFilaInsumo(insumos));
+    _precargarInsumos(listaEl, null, null, insumos);
   }
 
   contenido.querySelector('#btn-confirmar-produccion')
     .addEventListener('click', () => _confirmarProduccion(container, activos, insumos));
 }
 
-function _crearFilaInsumo(insumos) {
+function _crearFilaInsumo(insumos, valor = null) {
   const elemento = document.createElement('div');
   elemento.className = 'produccion-insumo-row';
 
@@ -152,14 +166,38 @@ function _crearFilaInsumo(insumos) {
       ${insumos.map(i => `<option value="${esc(i.id)}">${esc(i.nombre)}${i.unidad ? ' (' + esc(i.unidad) + ')' : ''}</option>`).join('')}
     </select>
     <input class="form-input prod-insumo-cantidad" type="number"
-           min="0" step="0.1" placeholder="0.0" inputmode="decimal" autocomplete="off">
+           min="0" step="0.1" placeholder="0.0" inputmode="decimal" autocomplete="off"
+           value="${valor?.cantidad ?? ''}">
     <button type="button" class="btn btn-icon btn-ghost prod-insumo-remove" aria-label="Quitar insumo">✕</button>
   `;
 
+  if (valor?.insumoId) {
+    elemento.querySelector('.prod-insumo-select').value = valor.insumoId;
+  }
   elemento.querySelector('.prod-insumo-remove')
     .addEventListener('click', () => elemento.remove());
 
   return elemento;
+}
+
+/**
+ * Precarga los insumos desde la receta del producto (proporcional, ceil a 1 decimal).
+ * Si no hay receta o cantidad válida, deja una fila vacía.
+ */
+function _precargarInsumos(listaEl, receta, cantidadProducida, insumos) {
+  listaEl.innerHTML = '';
+
+  if (receta && Number.isInteger(cantidadProducida) && cantidadProducida > 0) {
+    const factor = cantidadProducida / receta.cantidadProducida;
+    receta.insumos.forEach(rI => {
+      listaEl.appendChild(_crearFilaInsumo(insumos, {
+        insumoId: rI.insumoId,
+        cantidad: ceil1(rI.cantidad * factor),
+      }));
+    });
+  } else {
+    listaEl.appendChild(_crearFilaInsumo(insumos, null));
+  }
 }
 
 // ══════════════════════════════════════════════════════════
@@ -210,26 +248,24 @@ async function _confirmarProduccion(container, productos, insumos) {
 
   const producto = productos.find(p => p.id === productoId);
 
-  // Advertencia si algún insumo quedará en negativo
-  const negativos = usados.filter(u => {
-    const ins = insumos.find(i => i.id === u.insumoId);
-    return ins && ((ins.cantidad ?? 0) - u.cantidad) < 0;
-  });
+  // Faltantes: insumos requeridos vs stock actual
+  const faltantes = usados
+    .map(u => {
+      const ins = insumos.find(i => i.id === u.insumoId);
+      return { ...u, faltante: u.cantidad - (ins?.cantidad ?? 0) };
+    })
+    .filter(u => u.faltante > 0);
 
-  if (negativos.length > 0) {
+  if (faltantes.length > 0) {
     const confirmado = await new Promise(resolve => {
       const cerrar = modal.abrir({
-        titulo: 'Stock insuficiente',
+        titulo: 'Insumos faltantes',
         contenido: `
-          <p class="text-sm text-muted">Los siguientes insumos quedarán en negativo:</p>
+          <p class="text-sm text-muted">No se abastece la producción. Faltan:</p>
           <div class="cobro-summary" style="margin-top: var(--space-2);">
-            ${negativos.map(n => {
-              const ins      = insumos.find(i => i.id === n.insumoId);
-              const restante = (ins?.cantidad ?? 0) - n.cantidad;
-              return `<div class="cobro-item-row"><span>${esc(n.nombreInsumo)}</span><span>${formatCantidad(restante)}</span></div>`;
-            }).join('')}
+            ${faltantes.map(f => `<div class="cobro-item-row"><span>${esc(f.nombreInsumo)}</span><span>${formatCantidad(f.faltante)}</span></div>`).join('')}
           </div>
-          <p class="text-sm" style="margin-top: var(--space-3);">¿Deseas continuar de todos modos?</p>
+          <p class="text-sm" style="margin-top: var(--space-3);">¿Deseas continuar de todos modos? (quedará stock negativo)</p>
         `,
         botones: [
           { texto: 'Cancelar', clase: 'btn-ghost', accion: () => { cerrar(); resolve(false); } },
@@ -238,7 +274,15 @@ async function _confirmarProduccion(container, productos, insumos) {
       });
     });
     if (!confirmado) return;
+  } else {
+    toast.info('Se tiene lo necesario para la producción.');
   }
+
+  // Costo total de insumos (snapshot)
+  const costoTotal = usados.reduce((s, u) => {
+    const ins = insumos.find(i => i.id === u.insumoId);
+    return s + ((ins?.costoUnitario ?? 0) * u.cantidad);
+  }, 0);
 
   try {
     await guardarProduccion({
@@ -246,6 +290,7 @@ async function _confirmarProduccion(container, productos, insumos) {
       nombreProducto: producto?.nombre ?? '',
       cantidadProducida,
       insumosUsados: usados,
+      costoTotal,
     });
     toast.success(`Producción registrada: ${cantidadProducida} × ${producto?.nombre ?? ''}`);
     navegar('insumos-costos'); // volver al menú anterior
