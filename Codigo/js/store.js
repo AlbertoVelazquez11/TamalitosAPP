@@ -272,6 +272,32 @@ export function guardarConfig(patch) {
   return config;
 }
 
+/**
+ * Restaura la configuración desde un respaldo.
+ * Conserva la versión de la app instalada (no permite degradar) y
+ * rellena con valores por defecto los campos ausentes.
+ * @param {Object} config — Configuración proveniente del respaldo
+ * @returns {Object|null} — Config resultante
+ */
+export function importarConfig(config) {
+  if (!config || typeof config !== 'object' || Array.isArray(config)) return null;
+
+  const actual = store.getState().config || _configDefault();
+  const fusionada = {
+    ..._configDefault(),
+    ...config,
+    version: actual.version, // nunca degradar la versión instalada
+  };
+
+  try {
+    localStorage.setItem(CONFIG_KEY, JSON.stringify(fusionada));
+  } catch (e) {
+    console.error('[Store] Error al importar config:', e);
+  }
+  store.setState({ config: fusionada });
+  return fusionada;
+}
+
 function _configDefault() {
   return {
     nombreNegocio:    'Mi Negocio',
