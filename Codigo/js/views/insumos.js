@@ -14,11 +14,11 @@
  *  - Swipe izquierda → eliminar (con confirmación).
  */
 
-import { getAll, put, remove } from '../db.js';
+import { getAll, put, remove, getUltimoCostoUnitario } from '../db.js';
 import { modal }               from '../components/modal.js';
 import { toast }               from '../components/toast.js';
 import { crearSwipeItem }      from '../components/swipe-item.js';
-import { esc, generarId, formatCantidad } from '../utils.js';
+import { esc, generarId, formatCantidad, formatMXN } from '../utils.js';
 import { navegarAtras }        from '../router.js';
 
 let _swipeCleanups = [];
@@ -94,9 +94,10 @@ async function _renderLista(container) {
         <div class="list-item__icon">🧾</div>
         <div class="list-item__content">
           <div class="list-item__title">${esc(insumo.nombre)}</div>
-          ${insumo.descripcion
-            ? `<div class="list-item__subtitle">${esc(insumo.descripcion)}</div>`
-            : ''}
+          ${(insumo.costoUnitario || insumo.descripcion) ? `
+            <div class="list-item__subtitle">
+              ${insumo.costoUnitario ? formatMXN(insumo.costoUnitario) + '/ud' : ''}${insumo.costoUnitario && insumo.descripcion ? ' · ' : ''}${insumo.descripcion ? esc(insumo.descripcion) : ''}
+            </div>` : ''}
         </div>
         <div class="list-item__trailing">
           <span class="font-bold" style="color: var(--color-text);">${cantidad}</span>
@@ -148,6 +149,18 @@ function _abrirFormulario(insumo, container) {
              maxlength="20" autocomplete="off">
     </div>
 
+    <div class="form-group" style="margin-top: var(--space-3);">
+      <label class="form-label" for="i-costo">Costo unitario (MXN)</label>
+      <div style="display:flex; align-items:center; gap: var(--space-2);">
+        <input id="i-costo" type="number" class="form-input"
+               value="${insumo?.costoUnitario ?? ''}"
+               placeholder="0.00" min="0" step="0.50"
+               inputmode="decimal" autocomplete="off" onfocus="this.select()">
+        ${insumo ? `<button type="button" class="btn btn-secondary btn-sm" id="btn-tomar-costo">Último costo</button>` : ''}
+      </div>
+      <span class="text-xs text-muted">Si no tiene costo, se toma $0.</span>
+    </div>
+
     ${esNuevo ? `
     <div class="form-group">
       <label class="form-label" for="i-cantidad">Cantidad inicial</label>
@@ -187,15 +200,28 @@ function _abrirFormulario(insumo, container) {
       cerrar();
       _abrirAjusteInventario(insumo, container);
     });
+
+    // Autollenar costo unitario desde el último costo registrado
+    document.getElementById('btn-tomar-costo')?.addEventListener('click', async () => {
+      const valor = await getUltimoCostoUnitario(insumo.id);
+      if (valor == null) {
+        toast.info('Este insumo no tiene costos registrados.');
+        return;
+      }
+      const inputCosto = document.getElementById('i-costo');
+      if (inputCosto) inputCosto.value = valor.toFixed(2);
+      toast.success('Costo actualizado desde el último costo.');
+    });
   }
 
   setTimeout(() => document.getElementById('i-nombre')?.focus(), 100);
 }
 
 async function _guardarInsumo(insumoExistente, container, cerrar) {
-  const nombre = document.getElementById('i-nombre')?.value.trim();
-  const unidad = document.getElementById('i-unidad')?.value.trim();
-  const desc   = document.getElementById('i-desc')?.value.trim();
+  const nombre       = document.getElementById('i-nombre')?.value.trim();
+  const unidad       = document.getElementById('i-unidad')?.value.trim();
+  const desc         = document.getElementById('i-desc')?.value.trim();
+  const costoUnitario = parseFloat(document.getElementById('i-costo')?.value) || 0;
 
   if (!nombre) {
     toast.error('El nombre del insumo es obligatorio.');
@@ -203,12 +229,13 @@ async function _guardarInsumo(insumoExistente, container, cerrar) {
   }
 
   if (insumoExistente) {
-    // Edición: NO se modifica la cantidad (solo nombre, unidad y descripción)
+    // Edición: NO se modifica la cantidad (solo nombre, unidad, descripción y costo)
     const actualizado = {
       ...insumoExistente,
       nombre,
-      unidad:      unidad || '',
-      descripcion: desc   || '',
+      unidad:        unidad || '',
+      descripcion:   desc   || '',
+      costoUnitario,
     };
     await put('insumos', actualizado);
     toast.success(`"${nombre}" actualizado.`);
@@ -226,12 +253,13 @@ async function _guardarInsumo(insumoExistente, container, cerrar) {
     }
 
     const nuevo = {
-      id:          generarId('ins'),
+      id:            generarId('ins'),
       nombre,
-      unidad:      unidad || '',
-      descripcion: desc   || '',
+      unidad:        unidad || '',
+      descripcion:   desc   || '',
       cantidad,
-      creadoEn:    new Date().toISOString(),
+      costoUnitario,
+      creadoEn:      new Date().toISOString(),
     };
     await put('insumos', nuevo);
     toast.success(`"${nombre}" agregado.`);

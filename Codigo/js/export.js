@@ -204,7 +204,7 @@ export async function exportarCSV(tipo, periodo) {
 // RESPALDO JSON — EXPORTAR / VALIDAR / IMPORTAR
 // ══════════════════════════════════════════════════════════
 
-const TABLAS = ['productos', 'insumos', 'costos', 'ventas', 'detalleVenta', 'producciones'];
+const TABLAS = ['productos', 'insumos', 'costos', 'ventas', 'detalleVenta', 'producciones', 'recetas', 'perfiles'];
 
 /**
  * Exporta todas las tablas de IndexedDB como archivo JSON y lo comparte.

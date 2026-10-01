@@ -41,6 +41,15 @@ export function formatCantidad(n) {
 }
 
 /**
+ * Redondea hacia arriba a 1 decimal (ej. 2.55 → 2.6).
+ * @param {number} n
+ * @returns {number}
+ */
+export function ceil1(n) {
+  return Math.ceil((Number(n) || 0) * 10) / 10;
+}
+
+/**
  * Devuelve la fecha de hoy en formato YYYY-MM-DD (zona local del dispositivo).
  * Compatible con <input type="date"> y con los índices de IndexedDB.
  * @returns {string}
