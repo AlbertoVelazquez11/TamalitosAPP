@@ -16,6 +16,7 @@ import {
   exportarTodo,
   importarRespaldo as _importarRespaldoDB,
 } from './db.js';
+import { store, importarConfig } from './store.js';
 import { hoy } from './utils.js';
 
 const BOM = '\uFEFF'; // BOM UTF-8 para compatibilidad con Excel/Numbers
@@ -220,11 +221,15 @@ const TABLAS = ['productos', 'insumos', 'costos', 'ventas', 'detalleVenta', 'pro
  * @returns {Promise<{compartido?: boolean, cancelado?: boolean}>}
  */
 export async function exportarRespaldoJSON() {
-  const datos = await exportarTodo();
+  const datos  = await exportarTodo();
+  // Incluir la configuración del negocio (nombre, logo, tema, perfil activo),
+  // que vive en localStorage y no en IndexedDB.
+  const config = store.getState().config || null;
   const json  = JSON.stringify({
     _formato:     'tamalitos-respaldo',
     _version:     '3.0.0',
     _exportadoEn: new Date().toISOString(),
+    _config:      config,
     ...datos,
   }, null, 2);
 
@@ -250,11 +255,15 @@ export function validarRespaldo(data) {
   return {
     valido: true,
     resumen: {
-      productos:    (data.productos || []).length,
-      insumos:      (data.insumos || []).length,
-      costos:       (data.costos || []).length,
-      ventas:       (data.ventas || []).length,
-      detalleVenta: (data.detalleVenta || []).length,
+      productos:     (data.productos || []).length,
+      insumos:       (data.insumos || []).length,
+      costos:        (data.costos || []).length,
+      ventas:        (data.ventas || []).length,
+      detalleVenta:  (data.detalleVenta || []).length,
+      producciones:  (data.producciones || []).length,
+      recetas:       (data.recetas || []).length,
+      perfiles:      (data.perfiles || []).length,
+      incluyeConfig: !!data._config,
     },
   };
 }
@@ -266,4 +275,7 @@ export function validarRespaldo(data) {
  */
 export async function restaurarRespaldo(data) {
   await _importarRespaldoDB(data);
+  // Restaurar configuración del negocio si el respaldo la incluye
+  // (respaldos generados a partir de esta versión).
+  if (data._config) importarConfig(data._config);
 }

@@ -283,7 +283,16 @@ async function _manejarImportarRespaldo(file) {
         <div class="cobro-item-row"><span>Insumos</span><span>${r.insumos}</span></div>
         <div class="cobro-item-row"><span>Ventas</span><span>${r.ventas}</span></div>
         <div class="cobro-item-row"><span>Gastos</span><span>${r.costos}</span></div>
+        <div class="cobro-item-row"><span>Producciones</span><span>${r.producciones}</span></div>
+        <div class="cobro-item-row"><span>Recetas</span><span>${r.recetas}</span></div>
+        <div class="cobro-item-row"><span>Perfiles</span><span>${r.perfiles}</span></div>
+        <div class="cobro-item-row"><span>Configuración (nombre/logo/tema)</span><span>${r.incluyeConfig ? 'Sí' : 'No'}</span></div>
       </div>
+      ${r.incluyeConfig ? '' : `
+      <p class="text-sm" style="color: var(--color-warning, #b45309); margin-top: var(--space-2);">
+        Este respaldo es de una versión anterior: no incluye el nombre, logo ni tema,
+        que deberás configurar manualmente.
+      </p>`}
       <p class="text-sm" style="color: var(--color-danger); margin-top: var(--space-3);">
         ⚠️ Se reemplazarán los datos actuales de este dispositivo.
       </p>
@@ -297,7 +306,10 @@ async function _manejarImportarRespaldo(file) {
           try {
             await restaurarRespaldo(data);
             cerrar();
-            toast.success('Respaldo restaurado correctamente.');
+            toast.success('Respaldo restaurado. Recargando la app…');
+            // Recargar para que el estado en memoria (store) refleje
+            // los datos y la configuración restaurados.
+            setTimeout(() => location.reload(), 900);
           } catch (e) {
             console.error('[Config] Error al restaurar respaldo:', e);
             toast.error('No se pudo restaurar el respaldo.');
