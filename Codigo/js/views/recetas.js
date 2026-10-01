@@ -231,24 +231,77 @@ async function _abrirFormulario(receta, container) {
   }, 100);
 }
 
-function _crearFilaInsumo(insumos, valor) {
+function _crearFilaInsumo(insumos, valor = null) {
   const fila = document.createElement('div');
   fila.className = 'produccion-insumo-row';
 
   fila.innerHTML = `
-    <select class="form-select r-insumo-select">
-      <option value="">Selecciona insumo…</option>
-      ${insumos.map(i => `<option value="${esc(i.id)}">${esc(i.nombre)}${i.unidad ? ' (' + esc(i.unidad) + ')' : ''}</option>`).join('')}
-    </select>
+    <div class="insumo-autocomplete">
+      <input type="text" class="form-input r-insumo-search"
+             placeholder="Buscar insumo…" autocomplete="off"
+             value="${valor?.nombreInsumo ? esc(valor.nombreInsumo) : ''}">
+      <input type="hidden" class="r-insumo-id" value="${valor?.insumoId ?? ''}">
+      <div class="insumo-suggest"></div>
+    </div>
     <input class="form-input r-insumo-cantidad" type="number"
-           min="0" step="0.1" placeholder="0.0" inputmode="decimal" autocomplete="off"
+           min="0" step="0.1" placeholder="0" inputmode="decimal" autocomplete="off"
            value="${valor?.cantidad ?? ''}">
     <button type="button" class="btn btn-icon btn-ghost r-insumo-remove" aria-label="Quitar insumo">✕</button>
   `;
 
-  if (valor?.insumoId) {
-    fila.querySelector('.r-insumo-select').value = valor.insumoId;
-  }
+  const search   = fila.querySelector('.r-insumo-search');
+  const hiddenId = fila.querySelector('.r-insumo-id');
+  const suggest  = fila.querySelector('.insumo-suggest');
+
+  const _cerrarSugerencias = () => {
+    suggest.innerHTML = '';
+    suggest.style.display = 'none';
+  };
+
+  search.addEventListener('input', () => {
+    hiddenId.value = ''; // el usuario escribió; invalida la selección previa
+    const q = search.value.trim().toLowerCase();
+    if (!q) {
+      _cerrarSugerencias();
+      return;
+    }
+
+    // Excluir insumos ya agregados en otras filas
+    const usados = new Set(
+      [...document.querySelectorAll('#r-insumos-lista .r-insumo-id')]
+        .map(el => el.value)
+        .filter(id => id)
+    );
+
+    const matches = insumos
+      .filter(i => !usados.has(i.id) && i.nombre.toLowerCase().includes(q))
+      .slice(0, 8);
+
+    if (matches.length === 0) {
+      suggest.innerHTML = '<div class="insumo-suggest-item muted">Sin coincidencias</div>';
+      suggest.style.display = 'block';
+      return;
+    }
+
+    suggest.innerHTML = matches.map(i => `
+      <div class="insumo-suggest-item" data-id="${esc(i.id)}" data-nombre="${esc(i.nombre)}">
+        ${esc(i.nombre)}${i.unidad ? ' <span class="text-muted">(' + esc(i.unidad) + ')</span>' : ''}
+      </div>`).join('');
+    suggest.style.display = 'block';
+  });
+
+  suggest.addEventListener('click', (e) => {
+    const item = e.target.closest('.insumo-suggest-item');
+    if (!item || !item.dataset.id) return;
+    hiddenId.value = item.dataset.id;
+    search.value   = item.dataset.nombre;
+    _cerrarSugerencias();
+  });
+
+  search.addEventListener('blur', () => {
+    setTimeout(_cerrarSugerencias, 150);
+  });
+
   fila.querySelector('.r-insumo-remove').addEventListener('click', () => fila.remove());
 
   return fila;
@@ -276,9 +329,15 @@ async function _guardarReceta(recetaExistente, container, cerrar, insumos, produ
   const filas = document.querySelectorAll('#r-insumos-lista .produccion-insumo-row');
 
   for (const fila of filas) {
-    const insumoId = fila.querySelector('.r-insumo-select')?.value;
-    const cantidad = Number(fila.querySelector('.r-insumo-cantidad')?.value);
-    if (!insumoId) continue;
+    const insumoId   = fila.querySelector('.r-insumo-id')?.value;
+    const searchText = fila.querySelector('.r-insumo-search')?.value.trim();
+    const cantidad   = Number(fila.querySelector('.r-insumo-cantidad')?.value);
+
+    if (!insumoId && !searchText) continue; // fila vacía
+    if (searchText && !insumoId) {
+      toast.error('Selecciona un insumo de la lista de sugerencias.');
+      return;
+    }
     if (!Number.isFinite(cantidad) || cantidad <= 0) {
       toast.error('Cada insumo debe tener una cantidad mayor a 0.');
       return;
@@ -388,7 +447,7 @@ async function _abrirCalculadora() {
       const cantidad = ceil1(rI.cantidad * factor);
       const costo    = (insumo?.costoUnitario ?? 0) * cantidad;
       costoTotal += costo;
-      return `<div class="cobro-item-row"><span>${esc(rI.nombreInsumo)} × ${formatCantidad(cantidad)}</span><span>${formatMXN(costo)}</span></div>`;
+      return `<div class="cobro-item-row"><span>${esc(rI.nombreInsumo)} × ${formatCantidad(cantidad)}${insumo?.unidad ? ' ' + esc(insumo.unidad) : ''}</span><span>${formatMXN(costo)}</span></div>`;
     }).join('');
 
     resultado.innerHTML = `
