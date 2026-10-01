@@ -15,7 +15,7 @@
  *    ya que .pos-products-section ya no hereda el padding de #app
  */
 
-import { getProductosActivos, guardarVentaCompleta } from '../db.js';
+import { getProductosActivos, guardarVentaCompleta, getById } from '../db.js';
 import { store, agregarAlPedido, cambiarCantidad, limpiarPedido, calcularSubtotal } from '../store.js';
 import { modal }   from '../components/modal.js';
 import { toast }   from '../components/toast.js';
@@ -25,6 +25,9 @@ import { navegar, navegarAtras } from '../router.js';
 // Referencia a los productos activos para reflejar stock sin recargar la vista
 let _productosActuales = [];
 
+// Perfil activo (PDV) para asociar a la venta
+let _perfilActivo = null;
+
 export async function render(container) {
   // Activar layout de dos paneles en #app
   const appEl = document.getElementById('app');
@@ -33,6 +36,10 @@ export async function render(container) {
   // ── Cargar productos activos ──────────────────────────────
   const productos = await getProductosActivos();
   _productosActuales = productos;
+
+  // Perfil activo (PDV)
+  const { config } = store.getState();
+  _perfilActivo = config.perfilActivoId ? await getById('perfiles', config.perfilActivoId) : null;
 
   // ── Estructura base de la vista ──────────────────────────
   // NOTA: los productos vacíos y la grilla van dentro de pos-products-section
@@ -343,6 +350,11 @@ async function _confirmarCobro(cerrar, subtotal) {
     return;
   }
 
+  if (!_perfilActivo) {
+    toast.error('No hay un perfil activo. Ve a Administración → Perfiles.');
+    return;
+  }
+
   // Construir el objeto venta (sin id — db.js lo genera)
   const venta = {
     fecha:             hoy(),
@@ -355,6 +367,8 @@ async function _confirmarCobro(cerrar, subtotal) {
     estadoPago:        esSinIngreso ? 'pagada' : (esFiado ? 'pendiente' : 'pagada'),
     estado:            'cobrada',
     motivoCancelacion: null,
+    perfilId:          _perfilActivo?.id ?? null,
+    perfilNombre:      _perfilActivo?.nombre ?? '',
   };
 
   // Construir los detalles (snapshot del precio al momento de la venta)

@@ -10,6 +10,7 @@
  *  - Botón secundario "Administración"
  */
 
+import { getById } from '../db.js';
 import { store }   from '../store.js';
 import { navegar } from '../router.js';
 import { esc }     from '../utils.js';
@@ -20,6 +21,13 @@ import { esc }     from '../utils.js';
  */
 export async function render(container) {
   const { config } = store.getState();
+
+  // Perfil activo (PDV)
+  let perfilNombre = '';
+  if (config?.perfilActivoId) {
+    const perfil = await getById('perfiles', config.perfilActivoId);
+    perfilNombre = perfil?.nombre ?? '';
+  }
 
   container.innerHTML = `
     <div class="home-view">
@@ -47,7 +55,8 @@ export async function render(container) {
       <!-- Acciones principales -->
       <div class="home-actions">
         <button class="btn btn-primary home-cta" id="btn-venta">
-          💰 Registrar Venta
+          <span>💰 Registrar Venta</span>
+          ${perfilNombre ? `<span class="home-cta__perfil">${esc(perfilNombre)}</span>` : ''}
         </button>
         <button class="btn btn-secondary home-secondary-btn" id="btn-insumos">
           📦 Administración

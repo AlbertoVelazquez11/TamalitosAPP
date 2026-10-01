@@ -233,9 +233,17 @@ export function cargarConfig() {
     const raw    = localStorage.getItem(CONFIG_KEY);
     const config = raw ? JSON.parse(raw) : _configDefault();
 
-    // Migración de versión (v1.x → v2.0.0)
+    // Migraciones (v1 → v2 → v3)
+    let cambiado = false;
     if (config.version !== '2.0.0') {
       config.version = '2.0.0';
+      cambiado = true;
+    }
+    if (!config.perfilActivoId) {
+      config.perfilActivoId = 'perfil_general';
+      cambiado = true;
+    }
+    if (cambiado) {
       try { localStorage.setItem(CONFIG_KEY, JSON.stringify(config)); } catch (e) { /* ignorar */ }
     }
 
@@ -271,6 +279,7 @@ function _configDefault() {
     tema:             'light',      // 'light' | 'dark'
     ultimaExportacion: null,
     logo:             null,         // Base64 string para el logo
+    perfilActivoId:   'perfil_general',
   };
 }
 
