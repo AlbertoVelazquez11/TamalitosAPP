@@ -7,7 +7,7 @@
  * HU-053: Cancelación de venta solo dentro de las últimas 24 h
  */
 
-import { getVentasPorFecha, getCostosPorFecha, getDetallesByVentaId, cancelarVenta, put } from '../db.js';
+import { getVentasPorFecha, getCostosPorFecha, getDetallesByVentaId, cancelarVenta, put, aplicarMovimiento } from '../db.js';
 import { crearDateFilter } from '../components/date-filter.js';
 import { modal }           from '../components/modal.js';
 import { toast }           from '../components/toast.js';
@@ -299,6 +299,18 @@ async function _registrarPagoFiado(venta, container) {
       estadoPago: 'pagada',
       pagadoEn:   new Date().toISOString(),
     });
+
+    // El pago del fiado suma a Caja
+    if ((venta.total || 0) > 0) {
+      await aplicarMovimiento({
+        tipo:     'pagoFiado',
+        monto:    venta.total,
+        destino:  'caja',
+        concepto: 'Pago de fiado',
+        refId:    venta.id,
+      });
+    }
+
     toast.success('Pago registrado.');
     await _cargarVentas(container);
   } catch (e) {
