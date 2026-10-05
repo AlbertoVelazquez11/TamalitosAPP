@@ -2,14 +2,15 @@
  * db.js — Wrapper de IndexedDB para TamalitosAPP
  *
  * Proporciona una API async/await limpia sobre IndexedDB.
- * Versión de esquema: 3
- * Object Stores: productos, insumos, costos, ventas, detalleVenta, producciones, recetas, perfiles
+ * Versión de esquema: 4
+ * Object Stores: productos, insumos, costos, ventas, detalleVenta, producciones,
+ *                recetas, perfiles, finanzas, movimientosFinanzas
  */
 
 import { hoy } from './utils.js';
 
 const DB_NAME    = 'TamalitosAPP';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 // Singleton de la conexión a la base de datos
 let _db = null;
@@ -111,9 +112,26 @@ function _crearEsquema(db, oldVersion, tx) {
     store.createIndex('nombre', 'nombre', { unique: false });
   }
 
+  // ── Finanzas (saldo único: caja + fondo) ───────────────────
+  if (!db.objectStoreNames.contains('finanzas')) {
+    db.createObjectStore('finanzas', { keyPath: 'id' });
+  }
+
+  // ── Movimientos de Finanzas (ledger) ───────────────────────
+  if (!db.objectStoreNames.contains('movimientosFinanzas')) {
+    const store = db.createObjectStore('movimientosFinanzas', { keyPath: 'id' });
+    store.createIndex('fecha', 'fecha', { unique: false });
+    store.createIndex('tipo',  'tipo',  { unique: false });
+  }
+
   // Migración v2 → v3: perfil "General" + backfill de ventas
   if (oldVersion < 3 && tx) {
     _migrarV3(tx);
+  }
+
+  // Migración v3 → v4: seed del saldo de Finanzas
+  if (oldVersion < 4 && tx) {
+    _migrarV4(tx);
   }
 
   console.log('[DB] Esquema creado/actualizado correctamente.');
@@ -149,6 +167,19 @@ function _migrarV3(tx) {
       cursor.continue();
     }
   };
+}
+
+/**
+ * Migración v3 → v4: seed del saldo de Finanzas (caja y fondo en 0).
+ * El usuario ajusta la Caja manualmente desde la vista Finanzas.
+ */
+function _migrarV4(tx) {
+  tx.objectStore('finanzas').put({
+    id:            'actual',
+    caja:          0,
+    fondo:         0,
+    actualizadoEn: new Date().toISOString(),
+  });
 }
 
 // ══════════════════════════════════════════════════════════
@@ -367,6 +398,115 @@ export async function getResumenDiario(fecha) {
   };
 }
 
+// ══════════════════════════════════════════════════════════
+// API PÚBLICA — FINANZAS (v3.1)
+// ══════════════════════════════════════════════════════════
+
+const FINANZAS_ID = 'actual';
+
+/**
+ * Devuelve el saldo actual de Finanzas { caja, fondo }.
+ * Si aún no existe, devuelve ceros sin persistir.
+ */
+export async function getFinanzas() {
+  const fin = await getById('finanzas', FINANZAS_ID);
+  return fin ?? { id: FINANZAS_ID, caja: 0, fondo: 0 };
+}
+
+/**
+ * Ajusta manualmente el saldo de Caja a un valor absoluto.
+ * Deja registro en el ledger (tipo 'ajusteCaja').
+ * @param {number} nuevoValor — valor absoluto de Caja (>= 0)
+ */
+export async function ajustarCaja(nuevoValor) {
+  const fin = await getFinanzas();
+  fin.caja = nuevoValor;
+  fin.actualizadoEn = new Date().toISOString();
+  await put('finanzas', fin);
+  await _registrarMovimiento({
+    tipo:     'ajusteCaja',
+    monto:    nuevoValor,
+    concepto: 'Ajuste manual de Caja',
+  });
+  return fin;
+}
+
+/**
+ * Aplica un movimiento de dinero actualizando Caja/Fondo de forma atómica
+ * y dejando registro en el ledger (movimientosFinanzas).
+ *
+ * @param {Object} params
+ * @param {string} params.tipo    — venta | pagoFiado | cancelacionVenta | costo | costoEliminado | aporteFondo
+ * @param {number} params.monto   — monto positivo (> 0)
+ * @param {'caja'|'fondo'|null} [params.origen]  — cuenta que se descuenta
+ * @param {'caja'|'fondo'|null} [params.destino] — cuenta que se suma
+ * @param {string} [params.concepto]
+ * @param {string} [params.refId]  — id de la venta/costo relacionado
+ */
+export async function aplicarMovimiento({ tipo, monto, origen = null, destino = null, concepto = '', refId = null }) {
+  const db = await openDB();
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(['finanzas', 'movimientosFinanzas'], 'readwrite');
+    tx.onerror = () => reject(tx.error);
+
+    const storeFin = tx.objectStore('finanzas');
+    const storeMov = tx.objectStore('movimientosFinanzas');
+
+    const reqFin = storeFin.get(FINANZAS_ID);
+    reqFin.onsuccess = () => {
+      const fin = reqFin.result ?? { id: FINANZAS_ID, caja: 0, fondo: 0 };
+
+      if (origen === 'caja')  fin.caja  = (fin.caja  ?? 0) - monto;
+      if (origen === 'fondo') fin.fondo = (fin.fondo ?? 0) - monto;
+      if (destino === 'caja') fin.caja  = (fin.caja  ?? 0) + monto;
+      if (destino === 'fondo') fin.fondo = (fin.fondo ?? 0) + monto;
+      fin.actualizadoEn = new Date().toISOString();
+
+      storeFin.put(fin);
+      storeMov.put({
+        id:       `mov_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        tipo,
+        monto,
+        origen:   origen ?? null,
+        destino:  destino ?? null,
+        concepto,
+        refId:    refId ?? null,
+        fecha:    hoy(),
+        creadoEn: new Date().toISOString(),
+      });
+    };
+
+    tx.oncomplete = () => resolve();
+  });
+}
+
+/**
+ * Registra un movimiento en el ledger sin alterar saldos
+ * (usado para el ajuste manual de Caja).
+ */
+async function _registrarMovimiento({ tipo, monto, concepto = '', origen = null, destino = null, refId = null }) {
+  await put('movimientosFinanzas', {
+    id:       `mov_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    tipo,
+    monto,
+    origen:   origen ?? null,
+    destino:  destino ?? null,
+    concepto,
+    refId:    refId ?? null,
+    fecha:    hoy(),
+    creadoEn: new Date().toISOString(),
+  });
+}
+
+/**
+ * Devuelve el ledger de movimientos de Finanzas, más recientes primero.
+ */
+export async function getMovimientosFinanzas() {
+  const movs = await getAll('movimientosFinanzas');
+  return movs.sort((a, b) => (b.creadoEn || '').localeCompare(a.creadoEn || ''));
+}
+
 /**
  * Guarda una venta completa (cabecera + detalles) en una
  * transacción atómica para garantizar consistencia.
@@ -491,7 +631,9 @@ export async function guardarProduccion({ productoId, nombreProducto, cantidadPr
 export async function cancelarVenta(ventaId, motivo) {
   const db = await openDB();
 
-  return new Promise((resolve, reject) => {
+  let restarCaja = 0; // monto a descontar de Caja si la venta estaba pagada
+
+  await new Promise((resolve, reject) => {
     const tx = db.transaction(['ventas', 'detalleVenta', 'productos'], 'readwrite');
     tx.onerror = () => reject(tx.error);
 
@@ -501,6 +643,13 @@ export async function cancelarVenta(ventaId, motivo) {
     reqVenta.onsuccess = () => {
       const venta = reqVenta.result;
       if (!venta) return;
+
+      // Si era una venta realmente cobrada (no fiada, no sin-ingreso),
+      // el dinero ya se sumó a Caja y hay que restarlo.
+      if (venta.tipo !== 'noIngreso' && venta.estadoPago === 'pagada') {
+        restarCaja = venta.total || 0;
+      }
+
       venta.estado            = 'cancelada';
       venta.motivoCancelacion = motivo;
       venta.actualizadoEn     = new Date().toISOString();
@@ -527,6 +676,17 @@ export async function cancelarVenta(ventaId, motivo) {
 
     tx.oncomplete = () => resolve();
   });
+
+  // Descontar de Caja si la venta cancelada había sumado dinero
+  if (restarCaja > 0) {
+    await aplicarMovimiento({
+      tipo:     'cancelacionVenta',
+      monto:    restarCaja,
+      origen:   'caja',
+      concepto: 'Cancelación de venta',
+      refId:    ventaId,
+    });
+  }
 }
 
 /**
@@ -535,7 +695,7 @@ export async function cancelarVenta(ventaId, motivo) {
  * @returns {Promise<Object>}
  */
 export async function exportarTodo() {
-  const [productos, insumos, costos, ventas, detalleVenta, producciones, recetas, perfiles] = await Promise.all([
+  const [productos, insumos, costos, ventas, detalleVenta, producciones, recetas, perfiles, finanzas, movimientosFinanzas] = await Promise.all([
     getAll('productos'),
     getAll('insumos'),
     getAll('costos'),
@@ -544,9 +704,11 @@ export async function exportarTodo() {
     getAll('producciones'),
     getAll('recetas'),
     getAll('perfiles'),
+    getAll('finanzas'),
+    getAll('movimientosFinanzas'),
   ]);
 
-  return { productos, insumos, costos, ventas, detalleVenta, producciones, recetas, perfiles };
+  return { productos, insumos, costos, ventas, detalleVenta, producciones, recetas, perfiles, finanzas, movimientosFinanzas };
 }
 
 /**
@@ -555,7 +717,7 @@ export async function exportarTodo() {
  * @param {Object} respaldo — Objeto con las 5 tablas
  */
 export async function importarRespaldo(respaldo) {
-  const stores = ['productos', 'insumos', 'costos', 'ventas', 'detalleVenta', 'producciones', 'recetas', 'perfiles'];
+  const stores = ['productos', 'insumos', 'costos', 'ventas', 'detalleVenta', 'producciones', 'recetas', 'perfiles', 'finanzas', 'movimientosFinanzas'];
 
   for (const storeName of stores) {
     await clearStore(storeName);
@@ -570,6 +732,12 @@ export async function importarRespaldo(respaldo) {
   if (perfiles.length === 0) {
     const ahora = new Date().toISOString();
     await put('perfiles', { id: 'perfil_general', nombre: 'General', creadoEn: ahora, actualizadoEn: ahora });
+  }
+
+  // Garantizar saldo de Finanzas (respaldos v3.0 no lo incluyen)
+  const fin = await getById('finanzas', 'actual');
+  if (!fin) {
+    await put('finanzas', { id: 'actual', caja: 0, fondo: 0, actualizadoEn: new Date().toISOString() });
   }
 }
 
