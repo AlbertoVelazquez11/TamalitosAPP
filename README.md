@@ -42,12 +42,21 @@ TamalitosAPP/
 | Recetas | Recetas y Calculadora | `#/recetas` | Receta por producto, insumos/cantidades y calculadora de producción |
 | Perfiles | PDV Activo / Sucursal | `#/perfiles` | Perfiles de venta y selección del perfil activo |
 | Inventario | Insumos | `#/insumos` | Catálogo con cantidad (stock), costo unitario, edición y ajuste manual |
-| Costos | Registro de Gastos | `#/costos` | Egresos con selector de insumo, cantidad y suma al inventario |
-| Dashboard | Venta por producto | `#/dashboard` | Gráficas de producto, tipo de ingreso, perfil y costo por producción |
+| Costos | Registro de Gastos | `#/costos` | Egresos con selector de insumo, cantidad, suma al inventario y fuente de dinero (Caja/Fondo) |
+| Finanzas | Finanzas | `#/finanzas` | Caja (editable), Fondo (solo movimientos) y Capital Financiero, con historial de movimientos |
+| Dashboard | Venta por producto | `#/dashboard` | Gráficas de producto, perfil y costo por producción (últimas 5) |
 | Config | Configuración | `#/config` | Nombre/logo, tema, productos, exportar CSV y respaldo |
 | Productos | CRUD Productos | `#/productos` | Alta, edición, desactivación y stock |
 
 ---
+
+## 🆕 Novedades v3.1.0
+
+- **Finanzas:** módulo de Caja (editable), Fondo (aportes desde Caja o Inversión) y Capital Financiero (Caja + Fondo), con historial de movimientos.
+- **Ventas y Caja:** cada venta cobrada suma a Caja; el pago de fiados suma; la cancelación resta.
+- **Costos con fuente:** cada gasto descuenta de Caja (por defecto) o Fondo.
+- **Acceso rápido en Venta:** icono 💰 para ver Caja y resumen del día (ingresos, gastos y utilidad).
+- **Dashboard:** se eliminó la gráfica "tipo de ingreso"; "Costo por producción" muestra producto, cantidad y $costo visibles (máx 5 últimas).
 
 ## 🆕 Novedades v3.0.0
 
@@ -68,6 +77,7 @@ TamalitosAPP/
 - [Sprint 5 — Auditoría iOS, QA y Lanzamiento](Documentacion/sprint5_qa.md)
 - [v2.0.0 — Análisis y Plan por Fases](Documentacion/v2.0.0_cambios.md)
 - [v3.0.0 — Decisiones y Plan por Sprints](Documentacion/v3.0.0_cambios.md)
+- [v3.1.0 — Finanzas y Mejoras de Dashboard](Documentacion/v3.1.0_cambios.md)
 
 ---
 
@@ -81,7 +91,7 @@ TamalitosAPP/
 | 4 | Historial (filtros, utilidad, cancelación 24h), exportación CSV y respaldo JSON | ✅ |
 | 5 | Pulido iOS, QA y lanzamiento v1.0.0 | ✅ |
 
-> **v2.0.0 finalizada** (base en `main`). La **v3.0.0** se desarrolla en la rama `develop-v3`.
+> **v3.0.0 finalizada** (base en `main`). La **v3.1.0 (Finanzas)** se desarrolla en la rama `feat/finanzas-v3.1.0`.
 
 ### 📤 Exportación y respaldo (Sprint 4)
 - **CSV** de ventas y gastos filtrado por día, semana, mes o año (Web Share API + fallback de descarga).
