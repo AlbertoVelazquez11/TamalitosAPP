@@ -29,6 +29,7 @@ const ROUTES = {
   'produccion':     () => import('./views/produccion.js'),
   'recetas':        () => import('./views/recetas.js'),
   'perfiles':       () => import('./views/perfiles.js'),
+  'finanzas':       () => import('./views/finanzas.js'),
   'dashboard':      () => import('./views/dashboard.js'),
   'config':         () => import('./views/config.js'),
   'productos':      () => import('./views/productos.js'),
