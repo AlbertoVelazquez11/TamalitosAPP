@@ -15,3 +15,7 @@ desktop.ini
 .obsidian/
 .vscode/
 .idea/
+
+# Documentos Markdown — no trackear salvo excepción explícita (regla del dueño)
+*.md
+!Documentacion/resumen_ejecutivo.md

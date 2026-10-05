@@ -214,7 +214,7 @@ export async function exportarCSV(tipo, periodo) {
 // RESPALDO JSON — EXPORTAR / VALIDAR / IMPORTAR
 // ══════════════════════════════════════════════════════════
 
-const TABLAS = ['productos', 'insumos', 'costos', 'ventas', 'detalleVenta', 'producciones', 'recetas', 'perfiles'];
+const TABLAS = ['productos', 'insumos', 'costos', 'ventas', 'detalleVenta', 'producciones', 'recetas', 'perfiles', 'finanzas', 'movimientosFinanzas'];
 
 /**
  * Exporta todas las tablas de IndexedDB como archivo JSON y lo comparte.
@@ -227,7 +227,7 @@ export async function exportarRespaldoJSON() {
   const config = store.getState().config || null;
   const json  = JSON.stringify({
     _formato:     'tamalitos-respaldo',
-    _version:     '3.0.0',
+    _version:     '3.1.0',
     _exportadoEn: new Date().toISOString(),
     _config:      config,
     ...datos,

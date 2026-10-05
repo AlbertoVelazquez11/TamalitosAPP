@@ -15,7 +15,7 @@
  *    ya que .pos-products-section ya no hereda el padding de #app
  */
 
-import { getProductosActivos, guardarVentaCompleta, getById } from '../db.js';
+import { getProductosActivos, guardarVentaCompleta, getById, aplicarMovimiento, getFinanzas, getVentasPorFecha, getCostosPorFecha } from '../db.js';
 import { store, agregarAlPedido, cambiarCantidad, limpiarPedido, calcularSubtotal } from '../store.js';
 import { modal }   from '../components/modal.js';
 import { toast }   from '../components/toast.js';
@@ -53,6 +53,7 @@ export async function render(container) {
         <button class="btn btn-icon" id="btn-back" aria-label="Regresar">←</button>
         <h1 class="view-header__title">Venta</h1>
         <div class="view-header__actions">
+          <button class="btn btn-icon btn-ghost" id="btn-finanzas" aria-label="Caja y resumen del día">💰</button>
           <button class="btn btn-ghost btn-sm" id="btn-historial">📋 Historial</button>
         </div>
       </div>
@@ -96,6 +97,7 @@ export async function render(container) {
 
   // ── Listeners de navegación ───────────────────────────────
   container.querySelector('#btn-back').addEventListener('click', navegarAtras);
+  container.querySelector('#btn-finanzas').addEventListener('click', () => _abrirResumenFinanzas());
   container.querySelector('#btn-historial').addEventListener('click', () => navegar('historial'));
   container.querySelector('#btn-ir-productos')?.addEventListener('click', () => navegar('productos'));
 
@@ -384,6 +386,17 @@ async function _confirmarCobro(cerrar, subtotal) {
     const ventaId = await guardarVentaCompleta(venta, detalles);
     console.log('[POS] Venta registrada:', ventaId);
 
+    // Sumar a Caja si es una venta realmente cobrada (no fiada, no sin-ingreso)
+    if (!esFiado && !esSinIngreso) {
+      await aplicarMovimiento({
+        tipo:     'venta',
+        monto:    total,
+        destino:  'caja',
+        concepto: 'Venta',
+        refId:    ventaId,
+      });
+    }
+
     cerrar();
     limpiarPedido();
 
@@ -404,6 +417,45 @@ async function _confirmarCobro(cerrar, subtotal) {
   } catch (e) {
     console.error('[POS] Error al guardar la venta:', e);
     toast.error('Error al registrar la venta. Intenta de nuevo.');
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// ACCESO RÁPIDO A CAJA Y RESUMEN DEL DÍA (v3.1)
+// ══════════════════════════════════════════════════════════
+
+async function _abrirResumenFinanzas() {
+  try {
+    const [fin, ventas, costos] = await Promise.all([
+      getFinanzas(),
+      getVentasPorFecha(hoy(), hoy()),
+      getCostosPorFecha(hoy(), hoy()),
+    ]);
+
+    const ingresos = ventas
+      .filter(v => v.estado === 'cobrada' && v.tipo !== 'noIngreso' && v.estadoPago === 'pagada')
+      .reduce((s, v) => s + (v.total || 0), 0);
+    const gastos   = costos.reduce((s, c) => s + (c.monto || 0), 0);
+    const caja     = fin.caja ?? 0;
+    const utilidad = ingresos - gastos;
+
+    const cerrar = modal.abrir({
+      titulo: 'Caja y resumen del día',
+      contenido: `
+        <div class="cobro-summary">
+          <div class="cobro-item-row"><span>💰 Caja</span><span style="font-weight: var(--font-weight-bold);">${formatMXN(caja)}</span></div>
+          <div class="cobro-item-row"><span>Ingresos del día</span><span style="color: var(--color-success);">${formatMXN(ingresos)}</span></div>
+          <div class="cobro-item-row"><span>Gastos del día</span><span style="color: var(--color-danger);">${formatMXN(gastos)}</span></div>
+          <div class="cobro-item-row"><span>Utilidad del día</span><span>${formatMXN(utilidad)}</span></div>
+        </div>
+      `,
+      botones: [
+        { texto: 'Cerrar', clase: 'btn-primary', accion: () => cerrar() },
+      ],
+    });
+  } catch (e) {
+    console.error('[POS] Error al cargar resumen de finanzas:', e);
+    toast.error('No se pudo cargar el resumen.');
   }
 }
 

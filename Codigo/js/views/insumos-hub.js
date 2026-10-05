@@ -37,6 +37,10 @@ export async function render(container) {
           <div class="hub-card__icon">🏪</div>
           <div class="hub-card__title">Perfiles</div>
         </div>
+        <div class="hub-card" id="btn-finanzas" role="button" tabindex="0">
+          <div class="hub-card__icon">💰</div>
+          <div class="hub-card__title">Finanzas</div>
+        </div>
       </div>
     </div>
   `;
@@ -47,5 +51,6 @@ export async function render(container) {
   container.querySelector('#btn-produccion').addEventListener('click', () => navegar('produccion'));
   container.querySelector('#btn-recetas').addEventListener('click', () => navegar('recetas'));
   container.querySelector('#btn-perfiles').addEventListener('click', () => navegar('perfiles'));
+  container.querySelector('#btn-finanzas').addEventListener('click', () => navegar('finanzas'));
 }
 

@@ -12,7 +12,7 @@
  *  - Historial del mes actual debajo (lista cronológica descendente).
  */
 
-import { getAll, put, remove, getById, getCostosPorFecha } from '../db.js';
+import { getAll, put, remove, getById, getCostosPorFecha, aplicarMovimiento, getFinanzas } from '../db.js';
 import { toast } from '../components/toast.js';
 import { modal } from '../components/modal.js';
 import { esc, formatMXN, hoy, generarId, formatFecha, formatCantidad } from '../utils.js';
@@ -68,6 +68,14 @@ export async function render(container) {
           <input id="c-monto" type="number" class="form-input"
                  placeholder="0.00" min="0.01" step="0.50"
                  inputmode="decimal" autocomplete="off">
+        </div>
+
+        <div class="form-group" style="margin-top: var(--space-3);">
+          <label class="form-label" for="c-fuente">Fuente del dinero</label>
+          <select id="c-fuente" class="form-select">
+            <option value="caja" selected>💵 Caja</option>
+            <option value="fondo">🏦 Fondo</option>
+          </select>
         </div>
 
         <div class="form-group" style="margin-top: var(--space-3);">
@@ -130,6 +138,7 @@ async function _guardarCosto(container, insumos) {
   const fecha      = container.querySelector('#c-fecha')?.value;
   const notas      = container.querySelector('#c-notas')?.value.trim();
   const cantidadStr = container.querySelector('#c-cantidad')?.value;
+  const fuente      = container.querySelector('#c-fuente')?.value || 'caja';
 
   // Validaciones
   if (!concepto) {
@@ -167,6 +176,7 @@ async function _guardarCosto(container, insumos) {
     insumoId:  insumoId || null,
     cantidad,
     monto,
+    fuente,
     fecha,
     notas:     notas || '',
     creadoEn:  new Date().toISOString(),
@@ -182,6 +192,21 @@ async function _guardarCosto(container, insumos) {
   }
 
   await put('costos', nuevo);
+
+  // Descontar de la fuente (Caja/Fondo) y registrar movimiento
+  const fin   = await getFinanzas();
+  const saldo = fuente === 'caja' ? (fin.caja ?? 0) : (fin.fondo ?? 0);
+  if (saldo - monto < 0) {
+    toast.info(`Aviso: ${fuente === 'caja' ? 'Caja' : 'Fondo'} quedará en negativo.`);
+  }
+  await aplicarMovimiento({
+    tipo:     'costo',
+    monto,
+    origen:   fuente,
+    concepto: concepto,
+    refId:    nuevo.id,
+  });
+
   toast.success(`Gasto "${concepto}" registrado — ${formatMXN(monto)}`);
 
   // Limpiar el formulario (mantener fecha)
@@ -256,6 +281,17 @@ async function _renderHistorial(container) {
         }
       }
 
+      // Revertir el dinero a su fuente (solo costos con Finanzas)
+      if (costo.fuente && (costo.monto || 0) > 0) {
+        await aplicarMovimiento({
+          tipo:     'costoEliminado',
+          monto:    costo.monto,
+          destino:  costo.fuente,
+          concepto: `Eliminado: ${costo.concepto}`,
+          refId:    costo.id,
+        });
+      }
+
       await remove('costos', id);
       toast.success('Gasto eliminado.');
       await _renderHistorial(container);
@@ -286,6 +322,7 @@ function _tarjetaCosto(c) {
           <span>${formatFecha(c.fecha)}</span>
           <span>·</span>
           <span>${esc(c.categoria)}</span>
+          ${c.fuente ? `<span>· ${c.fuente === 'fondo' ? '🏦 Fondo' : '💵 Caja'}</span>` : ''}
           ${cantidadInfo}
           ${c.notas ? `<span>· ${esc(c.notas)}</span>` : ''}
         </div>
