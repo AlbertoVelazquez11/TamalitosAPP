@@ -27,6 +27,10 @@ const PERIODOS = [
   { id: 'anio',   label: 'Año' },
 ];
 
+// Estado del toggle "Sin ingreso" (true = mostrar, false = ocultar)
+let _mostrarSinIngreso = true;
+let _periodoActual     = 'dia';
+
 export async function render(container) {
   container.innerHTML = `
     <div class="view">
@@ -44,7 +48,10 @@ export async function render(container) {
       <div id="dash-resumen" class="summary-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: var(--space-5);"></div>
 
       <!-- Gráfica por producto -->
-      <div class="section-title">Venta por producto</div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: var(--space-3);">
+        <div class="section-title" style="margin:0;">Venta por producto</div>
+        <button class="btn btn-sm btn-primary" id="dash-toggle-sin-ingreso" type="button" aria-pressed="true">👁 Sin ingreso</button>
+      </div>
       <div id="dash-pie-productos"></div>
 
       <!-- Ventas por perfil -->
@@ -66,6 +73,11 @@ export async function render(container) {
     });
   });
 
+  container.querySelector('#dash-toggle-sin-ingreso').addEventListener('click', () => {
+    _mostrarSinIngreso = !_mostrarSinIngreso;
+    _cargar(container, _periodoActual);
+  });
+
   _setActivo(container, 'dia');
   await _cargar(container, 'dia');
 }
@@ -78,11 +90,23 @@ function _setActivo(container, periodo) {
   });
 }
 
+function _actualizarToggle(container) {
+  const btn = container.querySelector('#dash-toggle-sin-ingreso');
+  if (!btn) return;
+  btn.classList.toggle('btn-primary', _mostrarSinIngreso);
+  btn.classList.toggle('btn-secondary', !_mostrarSinIngreso);
+  btn.innerHTML = _mostrarSinIngreso ? '👁 Sin ingreso' : '🚫 Sin ingreso';
+  btn.setAttribute('aria-pressed', String(_mostrarSinIngreso));
+}
+
 // ══════════════════════════════════════════════════════════
 // CARGA Y AGREGACIÓN
 // ══════════════════════════════════════════════════════════
 
 async function _cargar(container, periodo) {
+  _periodoActual = periodo;
+  _actualizarToggle(container);
+
   const { inicio, fin } = rangoDePeriodo(periodo);
   const ventas    = await getVentasPorFecha(inicio, fin);
   const vigentes  = ventas.filter(v => v.estado !== 'cancelada');
@@ -127,7 +151,7 @@ async function _cargar(container, periodo) {
 
       let agg = porProducto.get(key);
       if (!agg) {
-        agg = { nombre, cantidad: 0, ingresos: 0 };
+        agg = { nombre, cantidad: 0, ingresos: 0, sinIngreso: esNoIngreso };
         porProducto.set(key, agg);
       }
       agg.cantidad += d.cantidad;
@@ -155,8 +179,9 @@ async function _cargar(container, periodo) {
     </div>
   `;
 
-  // Gráfica por producto
-  _renderPie(container.querySelector('#dash-pie-productos'), [...porProducto.values()]);
+  // Gráfica por producto (filtrar "sin ingreso" según el toggle)
+  const dataProductos = [...porProducto.values()].filter(p => _mostrarSinIngreso || !p.sinIngreso);
+  _renderPie(container.querySelector('#dash-pie-productos'), dataProductos);
 
   // Ventas por perfil
   _renderPie(container.querySelector('#dash-pie-perfiles'), [...porPerfil.values()]);
