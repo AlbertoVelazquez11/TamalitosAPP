@@ -46,10 +46,6 @@ export async function render(container) {
       <div class="section-title">Venta por producto</div>
       <div id="dash-pie-productos"></div>
 
-      <!-- Gráfica por tipo de ingreso -->
-      <div class="section-title" style="margin-top: var(--space-5);">Por tipo de ingreso</div>
-      <div id="dash-pie-estado"></div>
-
       <!-- Ventas por perfil -->
       <div class="section-title" style="margin-top: var(--space-5);">Ventas por perfil</div>
       <div id="dash-pie-perfiles"></div>
@@ -103,9 +99,6 @@ async function _cargar(container, periodo) {
   let sinIngresoMonto = 0;
   let fiadasCount     = 0;
   let fiadasMonto     = 0;
-  let qtyIngresos     = 0;
-  let qtyFiadas       = 0;
-  let qtySinIngreso   = 0;
 
   vigentes.forEach((v, i) => {
     const detalles    = detallesAll[i] || [];
@@ -133,9 +126,7 @@ async function _cargar(container, periodo) {
         porProducto.set(d.productoId, agg);
       }
       agg.cantidad += d.cantidad;
-      if (esIngreso)   { agg.ingresos += d.subtotalLinea; qtyIngresos += d.cantidad; }
-      if (esFiada)     qtyFiadas     += d.cantidad;
-      if (esNoIngreso) qtySinIngreso += d.cantidad;
+      if (esIngreso) agg.ingresos += d.subtotalLinea;
 
       aggPerfil.cantidad += d.cantidad;
       if (esIngreso) aggPerfil.ingresos += d.subtotalLinea;
@@ -161,14 +152,6 @@ async function _cargar(container, periodo) {
 
   // Gráfica por producto
   _renderPie(container.querySelector('#dash-pie-productos'), [...porProducto.values()]);
-
-  // Gráfica por tipo de ingreso (cantidad de tamales)
-  const estadoData = [
-    { nombre: 'Ingresos',    cantidad: qtyIngresos,   ingresos: ingresos },
-    { nombre: 'Fiadas',      cantidad: qtyFiadas,     ingresos: fiadasMonto },
-    { nombre: 'Sin ingreso', cantidad: qtySinIngreso, ingresos: sinIngresoMonto },
-  ];
-  _renderPie(container.querySelector('#dash-pie-estado'), estadoData);
 
   // Ventas por perfil
   _renderPie(container.querySelector('#dash-pie-perfiles'), [...porPerfil.values()]);
@@ -256,37 +239,57 @@ function _renderCostosBarras(wrap, producciones) {
     return;
   }
 
-  const data = [...producciones].sort((a, b) =>
-    (a.fecha || '').localeCompare(b.fecha || '') || (a.creadoEn || '').localeCompare(b.creadoEn || '')
-  );
+  // Tomar las últimas 5 producciones (más recientes) y mostrarlas en orden cronológico
+  const ultimas = [...producciones]
+    .sort((a, b) => (b.creadoEn || '').localeCompare(a.creadoEn || '') || (b.fecha || '').localeCompare(a.fecha || ''))
+    .slice(0, 5)
+    .sort((a, b) => (a.creadoEn || '').localeCompare(a.creadoEn || '') || (a.fecha || '').localeCompare(a.fecha || ''));
 
-  const maxAltura  = Math.max(...data.map(p => p.cantidadProducida || 0), 1);
-  const totalCosto = data.reduce((s, p) => s + (p.costoTotal || 0), 0);
+  const maxAltura  = Math.max(...ultimas.map(p => p.cantidadProducida || 0), 1);
+  const totalCosto = ultimas.reduce((s, p) => s + (p.costoTotal || 0), 0);
 
   const W = 320;
-  const H = 220;
-  const padX = 10;
-  const padTop = 12;
-  const padBottom = 8;
-  const anchoBarra = Math.max(4, Math.min(48, (W - padX * 2) / data.length));
+  const H = 260;
+  const padX      = 42;   // espacio para etiquetas del eje Y (cantidad)
+  const padTop    = 28;   // espacio para etiquetas de $costo sobre las barras
+  const padBottom = 44;   // espacio para nombre del producto + cantidad bajo las barras
+  const plotH     = H - padTop - padBottom;
+  const anchoBarra = Math.max(24, Math.min(56, (W - padX - 12) / ultimas.length));
 
-  const bars = data.map((p, i) => {
-    const h = ((p.cantidadProducida || 0) / maxAltura) * (H - padTop - padBottom);
+  const recortar = (s, n) => (s && s.length > n) ? s.slice(0, n - 1) + '…' : (s || '');
+
+  // Barras con etiquetas visibles (iOS no muestra el <title> al tocar)
+  const bars = ultimas.map((p, i) => {
+    const h = ((p.cantidadProducida || 0) / maxAltura) * plotH;
     const x = padX + i * anchoBarra;
-    const y = H - padBottom - h;
-    return `<rect x="${x}" y="${y.toFixed(1)}" width="${anchoBarra - 2}" height="${h.toFixed(1)}" rx="2"
-                  fill="var(--color-primary)">
-              <title>${esc(p.nombreProducto)} — ${formatCantidad(p.cantidadProducida)} ud — ${formatMXN(p.costoTotal || 0)}</title>
-            </rect>`;
+    const y = padTop + (plotH - h);
+    const cx = (x + anchoBarra / 2).toFixed(1);
+    return `
+      <rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(anchoBarra - 8).toFixed(1)}" height="${Math.max(h, 0).toFixed(1)}" rx="2" fill="var(--color-primary)">
+        <title>${esc(p.nombreProducto)} — ${formatCantidad(p.cantidadProducida)} ud — ${formatMXN(p.costoTotal || 0)}</title>
+      </rect>
+      <text x="${cx}" y="${(y - 4).toFixed(1)}" text-anchor="middle" font-size="9" fill="var(--color-text-muted)">${formatMXN(p.costoTotal || 0)}</text>
+      <text x="${cx}" y="${(padTop + plotH + 12).toFixed(1)}" text-anchor="middle" font-size="9" fill="var(--color-text)">${esc(recortar(p.nombreProducto, 14))}</text>
+      <text x="${cx}" y="${(padTop + plotH + 24).toFixed(1)}" text-anchor="middle" font-size="9" fill="var(--color-text-muted)">${formatCantidad(p.cantidadProducida)}</text>`;
+  }).join('');
+
+  // Escala del eje Y (cantidad producida): 0, mitad y máximo
+  const escala = [0, 0.5, 1].map(f => {
+    const val = f * maxAltura;
+    const y   = padTop + plotH - (f * plotH);
+    return `
+      <line x1="${padX}" y1="${y.toFixed(1)}" x2="${W - 8}" y2="${y.toFixed(1)}" stroke="var(--color-border)" stroke-width="1" stroke-dasharray="2,2" />
+      <text x="${(padX - 4).toFixed(1)}" y="${(y + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--color-text-muted)">${formatCantidad(val)}</text>`;
   }).join('');
 
   wrap.innerHTML = `
     <div class="dash-pie-wrap">
       <svg width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="Costo por producción">
+        ${escala}
         ${bars}
       </svg>
       <p class="text-sm text-muted" style="text-align:center;">
-        ${data.length} producción${data.length !== 1 ? 'es' : ''} · Costo total ${formatMXN(totalCosto)}
+        ${ultimas.length} producción${ultimas.length !== 1 ? 'es' : ''} · Costo total ${formatMXN(totalCosto)}
       </p>
     </div>`;
 }
