@@ -8,6 +8,7 @@
  *
  * Reglas:
  *  - El pastel incluye todo lo entregado (venta, fiada y sin ingreso), excluyendo canceladas.
+ *  - Los pedidos "sin ingreso" se muestran como rebanada separada con leyenda "(Sin ingreso)".
  *  - Los "ingresos" por producto usan el precio de venta (snapshot), no el precio actual.
  */
 
@@ -120,10 +121,14 @@ async function _cargar(container, periodo) {
     }
 
     for (const d of detalles) {
-      let agg = porProducto.get(d.productoId);
+      // Separar "sin ingreso" en su propia rebanada con leyenda "(Sin ingreso)"
+      const key    = esNoIngreso ? `${d.productoId}__sin_ingreso` : d.productoId;
+      const nombre = esNoIngreso ? `${d.nombreProducto} (Sin ingreso)` : d.nombreProducto;
+
+      let agg = porProducto.get(key);
       if (!agg) {
-        agg = { nombre: d.nombreProducto, cantidad: 0, ingresos: 0 };
-        porProducto.set(d.productoId, agg);
+        agg = { nombre, cantidad: 0, ingresos: 0 };
+        porProducto.set(key, agg);
       }
       agg.cantidad += d.cantidad;
       if (esIngreso) agg.ingresos += d.subtotalLinea;
