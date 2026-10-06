@@ -220,21 +220,61 @@ const TABLAS = ['productos', 'insumos', 'costos', 'ventas', 'detalleVenta', 'pro
  * Exporta todas las tablas de IndexedDB como archivo JSON y lo comparte.
  * @returns {Promise<{compartido?: boolean, cancelado?: boolean}>}
  */
-export async function exportarRespaldoJSON() {
+/**
+ * Genera el JSON del respaldo completo (todas las tablas + config).
+ */
+async function _generarRespaldo() {
   const datos  = await exportarTodo();
   // Incluir la configuración del negocio (nombre, logo, tema, perfil activo),
   // que vive en localStorage y no en IndexedDB.
   const config = store.getState().config || null;
-  const json  = JSON.stringify({
+  return JSON.stringify({
     _formato:     'tamalitos-respaldo',
-    _version:     '3.1.0',
+    _version:     '3.2.0',
     _exportadoEn: new Date().toISOString(),
     _config:      config,
     ...datos,
   }, null, 2);
+}
 
+export async function exportarRespaldoJSON() {
+  const json   = await _generarRespaldo();
   const nombre = `respaldo_TamalitosAPP_${hoy().replace(/-/g, '')}.json`;
   return _compartirArchivo({ nombre, contenido: json, tipo: 'application/json' });
+}
+
+/**
+ * Envía el respaldo completo a Telegram vía el Worker proxy (/backup).
+ * Requiere config.telegramWorkerUrl; config.telegramChatId es opcional.
+ * @returns {Promise<{ok:true} | {ok:false, error:string, description?:string}>}
+ */
+export async function enviarRespaldoTelegram() {
+  const config    = store.getState().config || {};
+  const workerUrl = String(config.telegramWorkerUrl || '').trim().replace(/\/+$/, '');
+
+  if (!workerUrl) {
+    return { ok: false, error: 'sin_worker_url' };
+  }
+
+  const json   = await _generarRespaldo();
+  const nombre = `respaldo_TamalitosAPP_${hoy().replace(/-/g, '')}.json`;
+
+  const file = new File([json], nombre, { type: 'application/json' });
+  const form = new FormData();
+  form.set('document', file);
+  if (config.telegramChatId) form.set('chat_id', String(config.telegramChatId));
+  form.set('caption', `📦 Respaldo TamalitosAPP — ${hoy()}`);
+
+  try {
+    const resp = await fetch(`${workerUrl}/backup`, { method: 'POST', body: form });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || !data.ok) {
+      return { ok: false, error: data.error || 'envio_fallido', description: data.description || '' };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: 'sin_conexion', description: e.message };
+  }
 }
 
 /**

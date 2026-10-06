@@ -13,6 +13,7 @@ import {
   exportarRespaldoJSON,
   validarRespaldo,
   restaurarRespaldo,
+  enviarRespaldoTelegram,
 } from '../export.js';
 
 export async function render(container) {
@@ -97,6 +98,29 @@ export async function render(container) {
           📥 Importar Respaldo
         </button>
         <input type="file" id="input-importar" accept=".json,application/json" style="display: none;">
+      </div>
+
+      <!-- Respaldo a Telegram -->
+      <div class="config-section">
+        <p class="config-section-title">Respaldo a Telegram</p>
+        <p class="text-sm text-muted" style="padding: 0 var(--space-1); margin-bottom: var(--space-2);">
+          Envía el respaldo completo a tu Telegram mediante un Worker proxy (el token nunca sale del servidor).
+        </p>
+        <div class="form-group">
+          <label class="form-label" for="tg-worker-url">URL del Worker</label>
+          <input id="tg-worker-url" type="text" class="form-input"
+                 value="${esc(config?.telegramWorkerUrl ?? '')}"
+                 placeholder="https://tu-worker.workers.dev" autocomplete="off">
+        </div>
+        <div class="form-group" style="margin-top: var(--space-3);">
+          <label class="form-label" for="tg-chat-id">Chat ID <span class="text-muted">(opcional)</span></label>
+          <input id="tg-chat-id" type="text" class="form-input"
+                 value="${esc(config?.telegramChatId ?? '')}"
+                 placeholder="123456789" autocomplete="off">
+        </div>
+        <button class="btn btn-secondary btn-block" id="btn-enviar-telegram" style="margin-top: var(--space-3);">
+          📲 Enviar respaldo a Telegram
+        </button>
       </div>
 
       <!-- Versión -->
@@ -200,6 +224,40 @@ export async function render(container) {
     const file = e.target.files?.[0];
     inputImportar.value = '';
     if (file) _manejarImportarRespaldo(file);
+  });
+
+  // ── Enviar respaldo a Telegram ────────────────────────────
+  container.querySelector('#btn-enviar-telegram').addEventListener('click', async () => {
+    const workerUrl = container.querySelector('#tg-worker-url')?.value.trim();
+    const chatId    = container.querySelector('#tg-chat-id')?.value.trim();
+
+    if (!workerUrl) {
+      toast.error('Ingresa la URL del Worker de Telegram.');
+      return;
+    }
+
+    guardarConfig({ telegramWorkerUrl: workerUrl, telegramChatId: chatId || null });
+
+    const btn = container.querySelector('#btn-enviar-telegram');
+    btn.disabled = true;
+    btn.textContent = '⏳ Enviando…';
+
+    try {
+      const resultado = await enviarRespaldoTelegram();
+      if (resultado.ok) {
+        toast.success('Respaldo enviado a Telegram.');
+      } else if (resultado.error === 'sin_conexion') {
+        toast.error('Sin conexión. Conectate a internet e intentá de nuevo.');
+      } else {
+        toast.error(resultado.description || 'No se pudo enviar el respaldo a Telegram.');
+      }
+    } catch (e) {
+      console.error('[Config] Error al enviar respaldo a Telegram:', e);
+      toast.error('Error al enviar el respaldo a Telegram.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '📲 Enviar respaldo a Telegram';
+    }
   });
 }
 

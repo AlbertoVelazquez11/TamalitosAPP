@@ -233,14 +233,22 @@ export function cargarConfig() {
     const raw    = localStorage.getItem(CONFIG_KEY);
     const config = raw ? JSON.parse(raw) : _configDefault();
 
-    // Migraciones (v1 → v2 → v3)
+    // Migraciones (v1 → v2 → v3 → v3.2)
     let cambiado = false;
-    if (config.version !== '3.1.0') {
-      config.version = '3.1.0';
+    if (config.version !== '3.2.0') {
+      config.version = '3.2.0';
       cambiado = true;
     }
     if (!config.perfilActivoId) {
       config.perfilActivoId = 'perfil_general';
+      cambiado = true;
+    }
+    if (config.telegramWorkerUrl === undefined) {
+      config.telegramWorkerUrl = null;
+      cambiado = true;
+    }
+    if (config.telegramChatId === undefined) {
+      config.telegramChatId = null;
       cambiado = true;
     }
     if (cambiado) {
@@ -301,11 +309,13 @@ export function importarConfig(config) {
 function _configDefault() {
   return {
     nombreNegocio:    'Mi Negocio',
-    version:          '3.1.0',
+    version:          '3.2.0',
     tema:             'light',      // 'light' | 'dark'
     ultimaExportacion: null,
     logo:             null,         // Base64 string para el logo
     perfilActivoId:   'perfil_general',
+    telegramWorkerUrl: null,        // URL del Worker proxy (respaldo a Telegram)
+    telegramChatId:    null,        // chat_id destino (opcional)
   };
 }
 
