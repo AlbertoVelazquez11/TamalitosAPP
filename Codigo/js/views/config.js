@@ -246,10 +246,8 @@ export async function render(container) {
       const resultado = await enviarRespaldoTelegram();
       if (resultado.ok) {
         toast.success('Respaldo enviado a Telegram.');
-      } else if (resultado.error === 'sin_conexion') {
-        toast.error('Sin conexión. Conectate a internet e intentá de nuevo.');
       } else {
-        toast.error(resultado.description || 'No se pudo enviar el respaldo a Telegram.');
+        toast.error(_mensajeErrorTelegram(resultado.error, resultado.description));
       }
     } catch (e) {
       console.error('[Config] Error al enviar respaldo a Telegram:', e);
@@ -308,6 +306,27 @@ async function _exportar(tipo, cerrar) {
 // ══════════════════════════════════════════════════════════
 // IMPORTACIÓN DE RESPALDO
 // ══════════════════════════════════════════════════════════
+
+/**
+ * Traduce un código de error del Worker/Telegram a un mensaje claro.
+ */
+function _mensajeErrorTelegram(error, description) {
+  if (error === 'telegram_error' && description) {
+    return `Telegram rechazó el envío: ${description}`;
+  }
+  const mensajes = {
+    sin_worker_url:      'Falta la URL del Worker.',
+    bot_token_missing:   'El Worker no tiene el token del bot (TELEGRAM_BOT_TOKEN).',
+    chat_id_missing:     'Falta el Chat ID. Ponelo en Configuración o en el Worker (TELEGRAM_CHAT_ID).',
+    document_missing:    'Error interno: no se generó el archivo de respaldo.',
+    unauthorized:        'El Worker rechazó la solicitud (API key inválida).',
+    not_found:           'La URL del Worker no responde en /backup. Revisá que sea la URL base.',
+    method_not_allowed:  'El Worker no acepta el método POST.',
+    telegram_unreachable: 'El Worker no pudo contactar a Telegram.',
+    sin_conexion:        'Sin conexión. Conectate a internet e intentá de nuevo.',
+  };
+  return mensajes[error] || description || `Error: ${error || 'desconocido'}`;
+}
 
 async function _manejarImportarRespaldo(file) {
   let data;
