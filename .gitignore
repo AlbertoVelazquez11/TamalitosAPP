@@ -6,6 +6,9 @@ node_modules/
 # Vercel
 .vercel/
 
+# Cloudflare Wrangler (estado local)
+.wrangler/
+
 # Sistema Operativo
 .DS_Store
 Thumbs.db

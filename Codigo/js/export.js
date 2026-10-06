@@ -220,21 +220,88 @@ const TABLAS = ['productos', 'insumos', 'costos', 'ventas', 'detalleVenta', 'pro
  * Exporta todas las tablas de IndexedDB como archivo JSON y lo comparte.
  * @returns {Promise<{compartido?: boolean, cancelado?: boolean}>}
  */
-export async function exportarRespaldoJSON() {
+/**
+ * Genera el JSON del respaldo completo (todas las tablas + config).
+ */
+async function _generarRespaldo() {
   const datos  = await exportarTodo();
   // Incluir la configuración del negocio (nombre, logo, tema, perfil activo),
   // que vive en localStorage y no en IndexedDB.
   const config = store.getState().config || null;
-  const json  = JSON.stringify({
+  return JSON.stringify({
     _formato:     'tamalitos-respaldo',
-    _version:     '3.1.0',
+    _version:     '3.2.0',
     _exportadoEn: new Date().toISOString(),
     _config:      config,
     ...datos,
   }, null, 2);
+}
 
+export async function exportarRespaldoJSON() {
+  const json   = await _generarRespaldo();
   const nombre = `respaldo_TamalitosAPP_${hoy().replace(/-/g, '')}.json`;
   return _compartirArchivo({ nombre, contenido: json, tipo: 'application/json' });
+}
+
+/**
+ * Envía un archivo al Worker proxy de Telegram (endpoint /backup).
+ * @param {string} nombre    — nombre del archivo
+ * @param {string} contenido — contenido del archivo
+ * @param {string} tipo      — MIME type
+ */
+async function _enviarArchivoTelegram(nombre, contenido, tipo) {
+  const config    = store.getState().config || {};
+  const workerUrl = String(config.telegramWorkerUrl || '').trim().replace(/\/+$/, '');
+
+  if (!workerUrl) {
+    return { ok: false, error: 'sin_worker_url' };
+  }
+
+  const file = new File([contenido], nombre, { type: tipo });
+  const form = new FormData();
+  form.set('document', file);
+  if (config.telegramChatId) form.set('chat_id', String(config.telegramChatId));
+  form.set('caption', `📦 TamalitosAPP — ${hoy()}`);
+
+  try {
+    const resp = await fetch(`${workerUrl}/backup`, { method: 'POST', body: form });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || !data.ok) {
+      return { ok: false, error: data.error || 'envio_fallido', description: data.description || '' };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: 'sin_conexion', description: e.message };
+  }
+}
+
+/**
+ * Envía el respaldo completo a Telegram vía el Worker proxy.
+ * Requiere config.telegramWorkerUrl; config.telegramChatId es opcional.
+ */
+export async function enviarRespaldoTelegram() {
+  const json   = await _generarRespaldo();
+  const nombre = `respaldo_TamalitosAPP_${hoy().replace(/-/g, '')}.json`;
+  return _enviarArchivoTelegram(nombre, json, 'application/json');
+}
+
+/**
+ * Envía un CSV de ventas/gastos a Telegram vía el Worker proxy.
+ * @param {'ventas'|'gastos'} tipo
+ * @param {'dia'|'semana'|'mes'|'anio'} periodo
+ */
+export async function enviarCSVTelegram(tipo, periodo) {
+  const { inicio, fin } = rangoDePeriodo(periodo);
+  const esVentas = tipo === 'ventas';
+  const { csv, registros } = esVentas ? await _csvVentas(inicio, fin) : await _csvGastos(inicio, fin);
+
+  if (registros === 0) {
+    return { vacio: true };
+  }
+
+  const fecha  = hoy().replace(/-/g, '');
+  const nombre = `${esVentas ? 'ventas' : 'gastos'}_TamalitosAPP_${fecha}.csv`;
+  return _enviarArchivoTelegram(nombre, csv, 'text/csv');
 }
 
 /**
