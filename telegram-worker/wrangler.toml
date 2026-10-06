@@ -1,0 +1,10 @@
+name = "tamalitosapp-telegram-proxy"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Orígenes permitidos para CORS, separados por coma.
+# Vacío = permite cualquier origen (solo para pruebas).
+# En producción, poné el origen de tu PWA, ej:
+#   CORS_ALLOWED_ORIGINS = "https://tamalitosapp.vercel.app"
+[vars]
+CORS_ALLOWED_ORIGINS = ""
