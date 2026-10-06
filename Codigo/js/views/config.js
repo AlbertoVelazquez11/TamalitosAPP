@@ -14,6 +14,7 @@ import {
   validarRespaldo,
   restaurarRespaldo,
   enviarRespaldoTelegram,
+  enviarCSVTelegram,
 } from '../export.js';
 
 export async function render(container) {
@@ -100,26 +101,11 @@ export async function render(container) {
         <input type="file" id="input-importar" accept=".json,application/json" style="display: none;">
       </div>
 
-      <!-- Respaldo a Telegram -->
+      <!-- Telegram -->
       <div class="config-section">
-        <p class="config-section-title">Respaldo a Telegram</p>
-        <p class="text-sm text-muted" style="padding: 0 var(--space-1); margin-bottom: var(--space-2);">
-          Envía el respaldo completo a tu Telegram mediante un Worker proxy (el token nunca sale del servidor).
-        </p>
-        <div class="form-group">
-          <label class="form-label" for="tg-worker-url">URL del Worker</label>
-          <input id="tg-worker-url" type="text" class="form-input"
-                 value="${esc(config?.telegramWorkerUrl ?? '')}"
-                 placeholder="https://tu-worker.workers.dev" autocomplete="off">
-        </div>
-        <div class="form-group" style="margin-top: var(--space-3);">
-          <label class="form-label" for="tg-chat-id">Chat ID <span class="text-muted">(opcional)</span></label>
-          <input id="tg-chat-id" type="text" class="form-input"
-                 value="${esc(config?.telegramChatId ?? '')}"
-                 placeholder="123456789" autocomplete="off">
-        </div>
-        <button class="btn btn-secondary btn-block" id="btn-enviar-telegram" style="margin-top: var(--space-3);">
-          📲 Enviar respaldo a Telegram
+        <p class="config-section-title">Telegram</p>
+        <button class="btn btn-secondary btn-block" id="btn-config-telegram">
+          ${config?.telegramWorkerUrl ? '📲 Telegram: Configurado ✓' : '📲 Configurar respaldo a Telegram'}
         </button>
       </div>
 
@@ -206,16 +192,7 @@ export async function render(container) {
   container.querySelector('#btn-exportar').addEventListener('click', _abrirModalExportar);
 
   // ── Exportar Respaldo Completo (JSON) ─────────────────────
-  container.querySelector('#btn-respaldo').addEventListener('click', async () => {
-    try {
-      const resultado = await exportarRespaldoJSON();
-      if (resultado?.cancelado) return;
-      toast.success('Respaldo generado y listo para compartir.');
-    } catch (e) {
-      console.error('[Config] Error al exportar respaldo:', e);
-      toast.error('No se pudo generar el respaldo.');
-    }
-  });
+  container.querySelector('#btn-respaldo').addEventListener('click', _abrirModalRespaldo);
 
   // ── Importar Respaldo ─────────────────────────────────────
   const inputImportar = container.querySelector('#input-importar');
@@ -226,36 +203,93 @@ export async function render(container) {
     if (file) _manejarImportarRespaldo(file);
   });
 
-  // ── Enviar respaldo a Telegram ────────────────────────────
-  container.querySelector('#btn-enviar-telegram').addEventListener('click', async () => {
-    const workerUrl = container.querySelector('#tg-worker-url')?.value.trim();
-    const chatId    = container.querySelector('#tg-chat-id')?.value.trim();
+  // ── Configurar Telegram ───────────────────────────────────
+  container.querySelector('#btn-config-telegram').addEventListener('click', () => {
+    _abrirModalTelegram(container);
+  });
+}
 
-    if (!workerUrl) {
-      toast.error('Ingresa la URL del Worker de Telegram.');
-      return;
-    }
+// ══════════════════════════════════════════════════════════
+// TELEGRAM — CONFIGURACIÓN Y ENVÍO
+// ══════════════════════════════════════════════════════════
 
-    guardarConfig({ telegramWorkerUrl: workerUrl, telegramChatId: chatId || null });
+function _abrirModalTelegram(container) {
+  const config = store.getState().config || {};
+  const cerrar = modal.abrir({
+    titulo: 'Respaldo a Telegram',
+    contenido: `
+      <p class="text-sm text-muted" style="margin-bottom: var(--space-3);">
+        El Worker proxy reenvía el respaldo a tu Telegram. El token nunca sale del servidor.
+      </p>
+      <div class="form-group">
+        <label class="form-label" for="tg-worker-url">URL del Worker</label>
+        <input id="tg-worker-url" type="text" class="form-input"
+               value="${esc(config.telegramWorkerUrl ?? '')}"
+               placeholder="https://tu-worker.workers.dev" autocomplete="off">
+      </div>
+      <div class="form-group" style="margin-top: var(--space-3);">
+        <label class="form-label" for="tg-chat-id">Chat ID <span class="text-muted">(opcional)</span></label>
+        <input id="tg-chat-id" type="text" class="form-input"
+               value="${esc(config.telegramChatId ?? '')}"
+               placeholder="123456789" autocomplete="off">
+      </div>
+    `,
+    botones: [
+      { texto: 'Cancelar', clase: 'btn-ghost', accion: () => cerrar() },
+      { texto: 'Guardar', clase: 'btn-primary', accion: () => {
+        const workerUrl = document.getElementById('tg-worker-url')?.value.trim();
+        const chatId    = document.getElementById('tg-chat-id')?.value.trim();
+        if (!workerUrl) {
+          toast.error('Ingresa la URL del Worker de Telegram.');
+          return;
+        }
+        guardarConfig({ telegramWorkerUrl: workerUrl, telegramChatId: chatId || null });
+        toast.success('Telegram configurado.');
+        cerrar();
+        const btn = container.querySelector('#btn-config-telegram');
+        if (btn) btn.textContent = '📲 Telegram: Configurado ✓';
+      }},
+    ],
+  });
+}
 
-    const btn = container.querySelector('#btn-enviar-telegram');
-    btn.disabled = true;
-    btn.textContent = '⏳ Enviando…';
-
-    try {
-      const resultado = await enviarRespaldoTelegram();
-      if (resultado.ok) {
-        toast.success('Respaldo enviado a Telegram.');
-      } else {
-        toast.error(_mensajeErrorTelegram(resultado.error, resultado.description));
-      }
-    } catch (e) {
-      console.error('[Config] Error al enviar respaldo a Telegram:', e);
-      toast.error('Error al enviar el respaldo a Telegram.');
-    } finally {
-      btn.disabled = false;
-      btn.textContent = '📲 Enviar respaldo a Telegram';
-    }
+function _abrirModalRespaldo() {
+  const teleConfigurado = !!(store.getState().config?.telegramWorkerUrl);
+  const cerrar = modal.abrir({
+    titulo: 'Exportar Respaldo Completo',
+    contenido: `<p class="text-sm text-muted">¿Cómo querés exportar el respaldo?</p>`,
+    botones: [
+      { texto: 'Cancelar', clase: 'btn-ghost', accion: () => cerrar() },
+      { texto: '📤 Compartir/Descargar', clase: 'btn-secondary', accion: async () => {
+        cerrar();
+        try {
+          const resultado = await exportarRespaldoJSON();
+          if (resultado?.cancelado) return;
+          toast.success('Respaldo generado y listo para compartir.');
+        } catch (e) {
+          console.error('[Config] Error al exportar respaldo:', e);
+          toast.error('No se pudo generar el respaldo.');
+        }
+      }},
+      { texto: '📲 Enviar a Telegram', clase: 'btn-primary', accion: async () => {
+        if (!teleConfigurado) {
+          toast.error('Configurá Telegram primero (Configuración → Telegram).');
+          return;
+        }
+        cerrar();
+        try {
+          const resultado = await enviarRespaldoTelegram();
+          if (resultado.ok) {
+            toast.success('Respaldo enviado a Telegram.');
+          } else {
+            toast.error(_mensajeErrorTelegram(resultado.error, resultado.description));
+          }
+        } catch (e) {
+          console.error('[Config] Error al enviar respaldo a Telegram:', e);
+          toast.error('Error al enviar el respaldo a Telegram.');
+        }
+      }},
+    ],
   });
 }
 
@@ -276,6 +310,13 @@ function _abrirModalExportar() {
           <option value="anio">Este año</option>
         </select>
       </div>
+      <div class="form-group" style="margin-top: var(--space-3);">
+        <label class="form-label" for="export-destino">Destino</label>
+        <select id="export-destino" class="form-select">
+          <option value="compartir" selected>📤 Compartir / Descargar</option>
+          <option value="telegram">📲 Enviar a Telegram</option>
+        </select>
+      </div>
       <p class="text-sm text-muted">
         Se generará un archivo CSV compatible con Excel y Google Sheets.
       </p>
@@ -289,9 +330,31 @@ function _abrirModalExportar() {
 }
 
 async function _exportar(tipo, cerrar) {
-  const periodo  = document.getElementById('export-periodo')?.value || 'mes';
-  const resultado = await exportarCSV(tipo, periodo);
+  const periodo = document.getElementById('export-periodo')?.value || 'mes';
+  const destino = document.getElementById('export-destino')?.value || 'compartir';
 
+  // ── Envío por Telegram ────────────────────────────────────
+  if (destino === 'telegram') {
+    if (!(store.getState().config?.telegramWorkerUrl)) {
+      toast.error('Configurá Telegram primero (Configuración → Telegram).');
+      return;
+    }
+    const resultado = await enviarCSVTelegram(tipo, periodo);
+    if (resultado.vacio) {
+      toast.info('No hay datos para exportar en este período.');
+      return;
+    }
+    if (resultado.ok) {
+      cerrar();
+      toast.success('Exportado a Telegram.');
+    } else {
+      toast.error(_mensajeErrorTelegram(resultado.error, resultado.description));
+    }
+    return;
+  }
+
+  // ── Compartir / Descargar (como hasta ahora) ──────────────
+  const resultado = await exportarCSV(tipo, periodo);
   if (resultado.vacio) {
     toast.info('No hay datos para exportar en este período.');
     return;
