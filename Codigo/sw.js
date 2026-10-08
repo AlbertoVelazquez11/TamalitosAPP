@@ -8,7 +8,7 @@
  * limpieza de cachés obsoletas en los clientes.
  */
 
-const CACHE_NAME = 'tamalitos-v21';
+const CACHE_NAME = 'tamalitos-v22';
 
 // Recursos del app shell que se precachean en la instalación.
 // El SW debe poder servir la app completa sin ninguna petición a la red.

@@ -223,7 +223,8 @@ export function calcularSubtotal() {
 // HELPERS DE CONFIGURACIÓN
 // ══════════════════════════════════════════════════════════
 
-const CONFIG_KEY = 'tamalitos_config';
+const CONFIG_KEY    = 'tamalitos_config';
+const DEVICE_ID_KEY = 'tamalitos_device_id';
 
 /**
  * Carga la configuración desde localStorage e inicializa el store.
@@ -233,10 +234,10 @@ export function cargarConfig() {
     const raw    = localStorage.getItem(CONFIG_KEY);
     const config = raw ? JSON.parse(raw) : _configDefault();
 
-    // Migraciones (v1 → v2 → v3 → v3.2)
+    // Migraciones (v1 → v2 → v3 → v3.2 → v3.3)
     let cambiado = false;
-    if (config.version !== '3.2.0') {
-      config.version = '3.2.0';
+    if (config.version !== '3.3.0') {
+      config.version = '3.3.0';
       cambiado = true;
     }
     if (!config.perfilActivoId) {
@@ -249,6 +250,14 @@ export function cargarConfig() {
     }
     if (config.telegramChatId === undefined) {
       config.telegramChatId = null;
+      cambiado = true;
+    }
+    if (config.syncWorkerUrl === undefined) {
+      config.syncWorkerUrl = null;
+      cambiado = true;
+    }
+    if (config.syncApiKey === undefined) {
+      config.syncApiKey = null;
       cambiado = true;
     }
     if (cambiado) {
@@ -309,13 +318,32 @@ export function importarConfig(config) {
 function _configDefault() {
   return {
     nombreNegocio:    'Mi Negocio',
-    version:          '3.2.0',
+    version:          '3.3.0',
     tema:             'light',      // 'light' | 'dark'
     ultimaExportacion: null,
     logo:             null,         // Base64 string para el logo
     perfilActivoId:   'perfil_general',
     telegramWorkerUrl: null,        // URL del Worker proxy (respaldo a Telegram)
     telegramChatId:    null,        // chat_id destino (opcional)
+    syncWorkerUrl:     null,        // URL del Worker para sync R2
+    syncApiKey:        null,        // API key compartida (opcional)
   };
+}
+
+/**
+ * Devuelve un identificador estable del dispositivo (UUID), persistido
+ * en localStorage. Se usa para trazabilidad en los snapshots de sync.
+ */
+export function getDeviceId() {
+  try {
+    let id = localStorage.getItem(DEVICE_ID_KEY);
+    if (!id) {
+      id = `dev_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+      localStorage.setItem(DEVICE_ID_KEY, id);
+    }
+    return id;
+  } catch (e) {
+    return 'dev_unknown';
+  }
 }
 

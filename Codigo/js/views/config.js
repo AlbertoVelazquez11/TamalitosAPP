@@ -15,6 +15,8 @@ import {
   restaurarRespaldo,
   enviarRespaldoTelegram,
   enviarCSVTelegram,
+  sincronizarNube,
+  restaurarDeNube,
 } from '../export.js';
 
 export async function render(container) {
@@ -106,6 +108,20 @@ export async function render(container) {
         <p class="config-section-title">Telegram</p>
         <button class="btn btn-secondary btn-block" id="btn-config-telegram">
           ${config?.telegramWorkerUrl ? '📲 Telegram: Configurado ✓' : '📲 Configurar respaldo a Telegram'}
+        </button>
+      </div>
+
+      <!-- Sincronizar en la nube -->
+      <div class="config-section">
+        <p class="config-section-title">Sincronizar en la nube</p>
+        <button class="btn btn-secondary btn-block" id="btn-config-sync">
+          ${config?.syncWorkerUrl ? '☁️ Nube: Configurada ✓' : '☁️ Configurar sincronización'}
+        </button>
+        <button class="btn btn-secondary btn-block" id="btn-sincronizar">
+          ☁️ Sincronizar ahora
+        </button>
+        <button class="btn btn-ghost btn-block" id="btn-restaurar-nube">
+          📥 Restaurar desde nube
         </button>
       </div>
 
@@ -207,6 +223,17 @@ export async function render(container) {
   container.querySelector('#btn-config-telegram').addEventListener('click', () => {
     _abrirModalTelegram(container);
   });
+
+  // ── Sincronizar en la nube ────────────────────────────────
+  container.querySelector('#btn-config-sync').addEventListener('click', () => {
+    _abrirModalSync(container);
+  });
+  container.querySelector('#btn-sincronizar').addEventListener('click', () => {
+    _sincronizar(container);
+  });
+  container.querySelector('#btn-restaurar-nube').addEventListener('click', () => {
+    _restaurarDeNube();
+  });
 }
 
 // ══════════════════════════════════════════════════════════
@@ -282,7 +309,7 @@ function _abrirModalRespaldo() {
           if (resultado.ok) {
             toast.success('Respaldo enviado a Telegram.');
           } else {
-            toast.error(_mensajeErrorTelegram(resultado.error, resultado.description));
+            toast.error(_mensajeErrorNube(resultado.error, resultado.description));
           }
         } catch (e) {
           console.error('[Config] Error al enviar respaldo a Telegram:', e);
@@ -291,6 +318,84 @@ function _abrirModalRespaldo() {
       }},
     ],
   });
+}
+
+// ══════════════════════════════════════════════════════════
+// SINCRONIZACIÓN EN LA NUBE (R2)
+// ══════════════════════════════════════════════════════════
+
+function _abrirModalSync(container) {
+  const config = store.getState().config || {};
+  const cerrar = modal.abrir({
+    titulo: 'Sincronizar en la nube',
+    contenido: `
+      <p class="text-sm text-muted" style="margin-bottom: var(--space-3);">
+        Guardá y restaurá tus datos en la nube (R2) mediante el Worker proxy.
+      </p>
+      <div class="form-group">
+        <label class="form-label" for="sync-worker-url">URL del Worker</label>
+        <input id="sync-worker-url" type="text" class="form-input"
+               value="${esc(config.syncWorkerUrl ?? '')}"
+               placeholder="https://tu-worker.workers.dev" autocomplete="off">
+      </div>
+      <div class="form-group" style="margin-top: var(--space-3);">
+        <label class="form-label" for="sync-api-key">API key <span class="text-muted">(opcional)</span></label>
+        <input id="sync-api-key" type="text" class="form-input"
+               value="${esc(config.syncApiKey ?? '')}"
+               placeholder="clave compartida" autocomplete="off">
+      </div>
+    `,
+    botones: [
+      { texto: 'Cancelar', clase: 'btn-ghost', accion: () => cerrar() },
+      { texto: 'Guardar', clase: 'btn-primary', accion: () => {
+        const workerUrl = document.getElementById('sync-worker-url')?.value.trim();
+        const apiKey    = document.getElementById('sync-api-key')?.value.trim();
+        if (!workerUrl) {
+          toast.error('Ingresa la URL del Worker.');
+          return;
+        }
+        guardarConfig({ syncWorkerUrl: workerUrl, syncApiKey: apiKey || null });
+        toast.success('Sincronización configurada.');
+        cerrar();
+        const btn = container.querySelector('#btn-config-sync');
+        if (btn) btn.textContent = '☁️ Nube: Configurada ✓';
+      }},
+    ],
+  });
+}
+
+async function _sincronizar(container) {
+  const btn = container.querySelector('#btn-sincronizar');
+  btn.disabled = true;
+  btn.textContent = '⏳ Sincronizando…';
+  try {
+    const resultado = await sincronizarNube();
+    if (resultado.ok) {
+      toast.success('Datos sincronizados en la nube.');
+    } else {
+      toast.error(_mensajeErrorNube(resultado.error, resultado.description));
+    }
+  } catch (e) {
+    console.error('[Config] Error al sincronizar:', e);
+    toast.error('Error al sincronizar.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '☁️ Sincronizar ahora';
+  }
+}
+
+async function _restaurarDeNube() {
+  try {
+    const resultado = await restaurarDeNube();
+    if (!resultado.ok) {
+      toast.error(_mensajeErrorNube(resultado.error, resultado.description));
+      return;
+    }
+    _confirmarRestaurar(resultado.data);
+  } catch (e) {
+    console.error('[Config] Error al restaurar desde nube:', e);
+    toast.error('Error al restaurar desde la nube.');
+  }
 }
 
 // ══════════════════════════════════════════════════════════
@@ -348,7 +453,7 @@ async function _exportar(tipo, cerrar) {
       cerrar();
       toast.success('Exportado a Telegram.');
     } else {
-      toast.error(_mensajeErrorTelegram(resultado.error, resultado.description));
+      toast.error(_mensajeErrorNube(resultado.error, resultado.description));
     }
     return;
   }
@@ -371,9 +476,9 @@ async function _exportar(tipo, cerrar) {
 // ══════════════════════════════════════════════════════════
 
 /**
- * Traduce un código de error del Worker/Telegram a un mensaje claro.
+ * Traduce un código de error del Worker (Telegram/R2) a un mensaje claro.
  */
-function _mensajeErrorTelegram(error, description) {
+function _mensajeErrorNube(error, description) {
   if (error === 'telegram_error' && description) {
     return `Telegram rechazó el envío: ${description}`;
   }
@@ -381,12 +486,17 @@ function _mensajeErrorTelegram(error, description) {
     sin_worker_url:      'Falta la URL del Worker.',
     bot_token_missing:   'El Worker no tiene el token del bot (TELEGRAM_BOT_TOKEN).',
     chat_id_missing:     'Falta el Chat ID. Ponelo en Configuración o en el Worker (TELEGRAM_CHAT_ID).',
-    document_missing:    'Error interno: no se generó el archivo de respaldo.',
+    document_missing:    'Error interno: no se generó el archivo.',
     unauthorized:        'El Worker rechazó la solicitud (API key inválida).',
-    not_found:           'La URL del Worker no responde en /backup. Revisá que sea la URL base.',
-    method_not_allowed:  'El Worker no acepta el método POST.',
+    not_found:           'La URL del Worker no responde. Revisá que sea la URL base.',
+    method_not_allowed:  'El Worker no acepta el método.',
     telegram_unreachable: 'El Worker no pudo contactar a Telegram.',
     sin_conexion:        'Sin conexión. Conectate a internet e intentá de nuevo.',
+    no_snapshot:         'No hay ningún respaldo en la nube todavía.',
+    empty_body:          'El respaldo está vacío.',
+    invalid_json:        'El respaldo no es un JSON válido.',
+    r2_error:            'Error del almacenamiento en la nube (R2).',
+    respuesta_invalida:  'La nube devolvió un respaldo inválido.',
   };
   return mensajes[error] || description || `Error: ${error || 'desconocido'}`;
 }
@@ -407,6 +517,14 @@ async function _manejarImportarRespaldo(file) {
     return;
   }
 
+  _confirmarRestaurar(data);
+}
+
+/**
+ * Valida un respaldo y abre el modal de confirmación antes de restaurarlo.
+ * Se reutiliza para el import desde archivo y para el restore desde la nube.
+ */
+function _confirmarRestaurar(data) {
   const validacion = validarRespaldo(data);
   if (!validacion.valido) {
     toast.error(validacion.error);

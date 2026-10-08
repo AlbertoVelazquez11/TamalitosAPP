@@ -16,7 +16,7 @@ import {
   exportarTodo,
   importarRespaldo as _importarRespaldoDB,
 } from './db.js';
-import { store, importarConfig } from './store.js';
+import { store, importarConfig, getDeviceId } from './store.js';
 import { hoy } from './utils.js';
 
 const BOM = '\uFEFF'; // BOM UTF-8 para compatibilidad con Excel/Numbers
@@ -230,8 +230,9 @@ async function _generarRespaldo() {
   const config = store.getState().config || null;
   return JSON.stringify({
     _formato:     'tamalitos-respaldo',
-    _version:     '3.2.0',
+    _version:     '3.3.0',
     _exportadoEn: new Date().toISOString(),
+    _dispositivo: getDeviceId(),
     _config:      config,
     ...datos,
   }, null, 2);
@@ -302,6 +303,79 @@ export async function enviarCSVTelegram(tipo, periodo) {
   const fecha  = hoy().replace(/-/g, '');
   const nombre = `${esVentas ? 'ventas' : 'gastos'}_TamalitosAPP_${fecha}.csv`;
   return _enviarArchivoTelegram(nombre, csv, 'text/csv');
+}
+
+// ══════════════════════════════════════════════════════════
+// SINCRONIZACIÓN EN LA NUBE (R2)
+// ══════════════════════════════════════════════════════════
+
+function _syncHeaders(config) {
+  const headers = {};
+  if (config.syncApiKey) headers['X-API-Key'] = config.syncApiKey;
+  return headers;
+}
+
+/**
+ * Sube el snapshot completo a la nube (R2 vía Worker /sync).
+ */
+export async function sincronizarNube() {
+  const config    = store.getState().config || {};
+  const workerUrl = String(config.syncWorkerUrl || '').trim().replace(/\/+$/, '');
+
+  if (!workerUrl) {
+    return { ok: false, error: 'sin_worker_url' };
+  }
+
+  const json = await _generarRespaldo();
+
+  try {
+    const resp = await fetch(`${workerUrl}/sync`, {
+      method: 'PUT',
+      body: json,
+      headers: _syncHeaders(config),
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || !data.ok) {
+      return { ok: false, error: data.error || 'envio_fallido', description: data.description || '' };
+    }
+    return { ok: true, timestamp: data.timestamp };
+  } catch (e) {
+    return { ok: false, error: 'sin_conexion', description: e.message };
+  }
+}
+
+/**
+ * Descarga el último snapshot desde la nube (R2 vía Worker /sync).
+ * @returns {Promise<{ok:true, data:Object} | {ok:false, error:string, description?:string}>}
+ */
+export async function restaurarDeNube() {
+  const config    = store.getState().config || {};
+  const workerUrl = String(config.syncWorkerUrl || '').trim().replace(/\/+$/, '');
+
+  if (!workerUrl) {
+    return { ok: false, error: 'sin_worker_url' };
+  }
+
+  try {
+    const resp = await fetch(`${workerUrl}/sync`, {
+      method: 'GET',
+      headers: _syncHeaders(config),
+    });
+    if (resp.status === 404) {
+      return { ok: false, error: 'no_snapshot' };
+    }
+    if (!resp.ok) {
+      const data = await resp.json().catch(() => ({}));
+      return { ok: false, error: data.error || 'envio_fallido', description: data.description || '' };
+    }
+    const data = await resp.json().catch(() => null);
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      return { ok: false, error: 'respuesta_invalida' };
+    }
+    return { ok: true, data };
+  } catch (e) {
+    return { ok: false, error: 'sin_conexion', description: e.message };
+  }
 }
 
 /**
