@@ -19,6 +19,7 @@
   --color-surface:        #FFFFFF;   /* Tarjetas, paneles, pantallas secundarias */
   --color-surface-alt:    #FFE9C7;   /* Superficie alterna — melocotón suave */
   --color-surface-raised: #FFFFFF;   /* Modales, toasts (sobre todo) */
+  --gradient-bg: linear-gradient(180deg, var(--color-bg) 0%, var(--color-surface-alt) 100%);
 
   /* Bordes */
   --color-border:         rgba(176, 118, 44, 0.22);
@@ -55,9 +56,12 @@
   --color-pending-bg:     rgba(138, 90, 201, 0.14);
 
   /* Sombras — tono cálido acorde al fondo */
-  --shadow-sm:  0 1px 3px  rgba(176, 118, 44, 0.12);
-  --shadow-md:  0 4px 12px rgba(176, 118, 44, 0.16);
-  --shadow-lg:  0 8px 28px rgba(176, 118, 44, 0.22);
+  --shadow-sm:  0 1px 2px  rgba(176, 118, 44, 0.10),
+                0 2px 6px  rgba(176, 118, 44, 0.08);
+  --shadow-md:  0 1px 2px  rgba(176, 118, 44, 0.12),
+                0 8px 24px rgba(176, 118, 44, 0.14);
+  --shadow-lg:  0 2px 4px  rgba(176, 118, 44, 0.12),
+                0 12px 40px rgba(176, 118, 44, 0.20);
 
   /* Overlay de modales */
   --color-overlay: rgba(46, 24, 8, 0.50);
@@ -75,6 +79,7 @@
   --color-surface:        #22103a;   /* Tarjetas */
   --color-surface-alt:    #301550;   /* Superficie alterna */
   --color-surface-raised: #22103a;   /* Modales */
+  --gradient-bg: var(--color-bg);    /* Fondo plano (sin gradiente) */
 
   --color-border:         rgba(205, 180, 219, 0.18);
   --color-border-strong:  rgba(205, 180, 219, 0.32);
@@ -104,9 +109,12 @@
   --color-pending:        #c4a0e8;
   --color-pending-bg:     rgba(196, 160, 232, 0.15);
 
-  --shadow-sm:  0 1px 3px  rgba(0, 0, 0, 0.40);
-  --shadow-md:  0 4px 12px rgba(0, 0, 0, 0.55);
-  --shadow-lg:  0 8px 28px rgba(0, 0, 0, 0.70);
+  --shadow-sm:  0 1px 2px  rgba(0, 0, 0, 0.35),
+                0 2px 6px  rgba(0, 0, 0, 0.30);
+  --shadow-md:  0 1px 2px  rgba(0, 0, 0, 0.45),
+                0 8px 24px rgba(0, 0, 0, 0.50);
+  --shadow-lg:  0 2px 4px  rgba(0, 0, 0, 0.50),
+                0 12px 40px rgba(0, 0, 0, 0.65);
 
   --color-overlay: rgba(0, 0, 0, 0.70);
   --color-divider: rgba(205, 180, 219, 0.14);

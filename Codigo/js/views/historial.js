@@ -13,6 +13,7 @@ import { modal }           from '../components/modal.js';
 import { toast }           from '../components/toast.js';
 import { esc, formatMXN, formatFecha, formatHora, hoy } from '../utils.js';
 import { navegarAtras }    from '../router.js';
+import { icon }            from '../components/icons.js';
 
 const VENTANA_CANCELACION_MS = 24 * 60 * 60 * 1000;
 const PAGE_SIZE              = 50; // Paginación "cargar más" para listas largas (Sprint 5 — 5.3)
@@ -32,7 +33,7 @@ export async function render(container) {
   container.innerHTML = `
     <div class="view">
       <div class="view-header">
-        <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">←</button>
+        <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">${icon('arrow-left', 20)}</button>
         <h1 class="view-header__title">Historial de Ventas</h1>
       </div>
 
@@ -118,7 +119,7 @@ async function _renderResumen(container, ventas, fecha) {
     </div>
     ${(fiadas.length + sinIngreso.length) > 0 ? `
       <p class="text-sm text-muted" style="grid-column: 1 / -1; text-align: center; margin: 0;">
-        ⚠️ ${fiadas.length} fiada${fiadas.length !== 1 ? 's' : ''} pendiente${fiadas.length !== 1 ? 's' : ''} · ${sinIngreso.length} sin ingreso
+        ${icon('alert', 16)} ${fiadas.length} fiada${fiadas.length !== 1 ? 's' : ''} pendiente${fiadas.length !== 1 ? 's' : ''} · ${sinIngreso.length} sin ingreso
       </p>` : ''}
   `;
 }
@@ -210,7 +211,7 @@ function _crearTarjetaVenta(venta, detalles, container) {
           Cancelar
         </button>` : `
         <span class="text-xs text-muted" style="white-space: nowrap;"
-              title="Solo se pueden cancelar ventas de las últimas 24 horas">🔒 No cancelable</span>`)}
+              title="Solo se pueden cancelar ventas de las últimas 24 horas">${icon('lock', 14)} No cancelable</span>`)}
     </div>
 
     <!-- Detalle de productos -->

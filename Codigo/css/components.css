@@ -269,6 +269,7 @@
   flex: 1;
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
+  letter-spacing: -0.02em;
   color: var(--color-text);
   /* Truncar si el título es muy largo */
   white-space: nowrap;
@@ -460,6 +461,7 @@
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-bold);
   color: var(--color-text);
+  font-variant-numeric: tabular-nums;
 }
 
 .summary-card--income .summary-card__value { color: var(--color-success); }

@@ -23,7 +23,7 @@ body {
   font-weight: var(--font-weight-normal);
   line-height: 1.5;
   color: var(--color-text);
-  background-color: var(--color-bg);
+  background: var(--gradient-bg, var(--color-bg));
 
   /* iOS: fijar el body para que el scroll sea interno */
   position: fixed;
@@ -70,6 +70,7 @@ body {
 h1, h2, h3, h4, h5, h6 {
   font-weight: var(--font-weight-bold);
   line-height: 1.2;
+  letter-spacing: -0.015em;
   color: var(--color-text);
 }
 
@@ -204,5 +205,18 @@ a {
 .empty-state__desc {
   font-size: var(--font-size-sm);
   max-width: 240px;
+}
+
+/* ── MOVIMIENTO REDUCIDO ─────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .view-enter {
+    animation: none !important;
+  }
 }
 

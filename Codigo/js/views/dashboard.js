@@ -16,6 +16,7 @@ import { getVentasPorFecha, getDetallesByVentaId, getProduccionesPorFecha } from
 import { rangoDePeriodo } from '../export.js';
 import { esc, formatMXN, formatCantidad } from '../utils.js';
 import { navegarAtras } from '../router.js';
+import { icon } from '../components/icons.js';
 
 const COLORES = ['#FFAFCC', '#CDB4DB', '#A2D2FF', '#FFC8DD', '#b8a0e0', '#f0a855', '#2ecc8a', '#60b8ff', '#f06e85', '#7a8ab8'];
 
@@ -35,7 +36,7 @@ export async function render(container) {
   container.innerHTML = `
     <div class="view">
       <div class="view-header">
-        <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">←</button>
+        <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">${icon('arrow-left', 20)}</button>
         <h1 class="view-header__title">Dashboard</h1>
       </div>
 
@@ -50,7 +51,7 @@ export async function render(container) {
       <!-- Gráfica por producto -->
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: var(--space-3);">
         <div class="section-title" style="margin:0;">Venta por producto</div>
-        <button class="btn btn-sm btn-primary" id="dash-toggle-sin-ingreso" type="button" aria-pressed="true">👁 Sin ingreso</button>
+        <button class="btn btn-sm btn-primary" id="dash-toggle-sin-ingreso" type="button" aria-pressed="true">${icon('eye', 16)} Sin ingreso</button>
       </div>
       <div id="dash-pie-productos"></div>
 
@@ -95,7 +96,7 @@ function _actualizarToggle(container) {
   if (!btn) return;
   btn.classList.toggle('btn-primary', _mostrarSinIngreso);
   btn.classList.toggle('btn-secondary', !_mostrarSinIngreso);
-  btn.innerHTML = _mostrarSinIngreso ? '👁 Sin ingreso' : '🚫 Sin ingreso';
+  btn.innerHTML = _mostrarSinIngreso ? `${icon('eye', 16)} Sin ingreso` : `${icon('eye-off', 16)} Sin ingreso`;
   btn.setAttribute('aria-pressed', String(_mostrarSinIngreso));
 }
 

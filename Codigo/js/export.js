@@ -230,7 +230,7 @@ async function _generarRespaldo() {
   const config = store.getState().config || null;
   return JSON.stringify({
     _formato:     'tamalitos-respaldo',
-    _version:     '3.3.0',
+    _version:     '3.4.0',
     _exportadoEn: new Date().toISOString(),
     _dispositivo: getDeviceId(),
     _config:      config,

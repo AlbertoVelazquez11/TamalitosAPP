@@ -3,12 +3,13 @@
  * Vista intermedia con acceso a los dos sub-módulos.
  */
 import { navegar, navegarAtras } from '../router.js';
+import { icon } from '../components/icons.js';
 
 export async function render(container) {
   container.innerHTML = `
     <div class="view">
       <div class="view-header">
-        <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">←</button>
+        <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">${icon('arrow-left', 20)}</button>
         <h1 class="view-header__title">Administración</h1>
       </div>
 

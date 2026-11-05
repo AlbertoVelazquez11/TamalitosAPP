@@ -14,6 +14,7 @@ import { getById } from '../db.js';
 import { store }   from '../store.js';
 import { navegar } from '../router.js';
 import { esc }     from '../utils.js';
+import { icon }    from '../components/icons.js';
 
 /**
  * @param {HTMLElement} container — El contenedor .view asignado por el router
@@ -35,7 +36,7 @@ export async function render(container) {
       <!-- Barra superior -->
       <div class="home-topbar">
         <button class="btn btn-icon" id="btn-config" aria-label="Configuración">
-          ⚙️
+          ${icon('settings', 20)}
         </button>
       </div>
 

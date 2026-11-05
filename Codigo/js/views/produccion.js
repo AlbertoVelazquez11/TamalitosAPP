@@ -17,12 +17,13 @@ import { modal }     from '../components/modal.js';
 import { toast }     from '../components/toast.js';
 import { esc, formatCantidad, ceil1 } from '../utils.js';
 import { navegar, navegarAtras } from '../router.js';
+import { icon } from '../components/icons.js';
 
 export async function render(container) {
   container.innerHTML = `
     <div class="view">
       <div class="view-header">
-        <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">←</button>
+        <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">${icon('arrow-left', 20)}</button>
         <h1 class="view-header__title">Producción</h1>
       </div>
       <div id="produccion-contenido"></div>
@@ -168,7 +169,7 @@ function _crearFilaInsumo(insumos, valor = null) {
     <input class="form-input prod-insumo-cantidad" type="number"
            min="0" step="0.1" placeholder="0.0" inputmode="decimal" autocomplete="off"
            value="${valor?.cantidad ?? ''}">
-    <button type="button" class="btn btn-icon btn-ghost prod-insumo-remove" aria-label="Quitar insumo">✕</button>
+    <button type="button" class="btn btn-icon btn-ghost prod-insumo-remove" aria-label="Quitar insumo">${icon('x', 18)}</button>
   `;
 
   if (valor?.insumoId) {

@@ -234,10 +234,10 @@ export function cargarConfig() {
     const raw    = localStorage.getItem(CONFIG_KEY);
     const config = raw ? JSON.parse(raw) : _configDefault();
 
-    // Migraciones (v1 → v2 → v3 → v3.2 → v3.3)
+    // Migraciones (v1 → v2 → v3 → v3.2 → v3.3 → v3.4)
     let cambiado = false;
-    if (config.version !== '3.3.0') {
-      config.version = '3.3.0';
+    if (config.version !== '3.4.0') {
+      config.version = '3.4.0';
       cambiado = true;
     }
     if (!config.perfilActivoId) {
@@ -318,7 +318,7 @@ export function importarConfig(config) {
 function _configDefault() {
   return {
     nombreNegocio:    'Mi Negocio',
-    version:          '3.3.0',
+    version:          '3.4.0',
     tema:             'light',      // 'light' | 'dark'
     ultimaExportacion: null,
     logo:             null,         // Base64 string para el logo
