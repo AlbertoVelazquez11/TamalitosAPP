@@ -64,6 +64,14 @@ TamalitosAPP/
 - **Accesibilidad:** soporte de `prefers-reduced-motion`.
 - **Cifras alineadas:** `tabular-nums` en montos, totales y cantidades.
 
+## 🆕 Novedades v4.0.0
+
+- **Producción simple:** solo producto y cantidad (sin receta ni insumos).
+- **Dashboard:** filtros "Hoy / Fin de semana / Mes / Historico"; sin gráfica de producción.
+- **Historial:** desglose "Tamales vendidos por tipo"; sin Gastos/Utilidad.
+- **Clientes:** alta, edición y baja (nombre, descripción, domicilio, notas).
+- **Pedidos:** encargos con cliente, fecha, productos, total, anticipo, descuento y estados.
+
 ---
 
 ## 📖 Documentación Técnica
@@ -76,6 +84,7 @@ TamalitosAPP/
 - [v2.0.0 — Análisis y Plan por Fases](Documentacion/v2.0.0_cambios.md)
 - [v3.0.0 — Decisiones y Plan por Sprints](Documentacion/v3.0.0_cambios.md)
 - [v3.4.0 — Look & Feel Refresh](Documentacion/v3.4.0_cambios.md)
+- [v4.0.0 — Mejoras de negocio](Documentacion/v4.0.0_cambios.md)
 
 ---
 

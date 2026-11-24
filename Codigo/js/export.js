@@ -56,6 +56,16 @@ export function rangoDePeriodo(periodo) {
     }
     case 'anio':
       return { inicio: `${now.getFullYear()}-01-01`, fin };
+    case 'findesemana': {
+      return { inicio: _aISO(_ultimoViernes(now)), fin };
+    }
+    case '4semanas': {
+      const v = _ultimoViernes(now);
+      v.setDate(v.getDate() - 21);
+      return { inicio: _aISO(v), fin };
+    }
+    case 'historico':
+      return { inicio: '2000-01-01', fin };
     case 'dia':
     default:
       return { inicio: fin, fin };
@@ -68,6 +78,17 @@ function _pad(n) {
 
 function _aISO(d) {
   return `${d.getFullYear()}-${_pad(d.getMonth() + 1)}-${_pad(d.getDate())}`;
+}
+
+/**
+ * Devuelve la fecha del viernes más reciente (hoy si hoy es viernes).
+ * getDay(): 0=domingo ... 5=viernes, 6=sábado.
+ */
+function _ultimoViernes(d) {
+  const date = new Date(d);
+  const diff = (date.getDay() + 2) % 7; // días hacia atrás hasta el viernes
+  date.setDate(date.getDate() - diff);
+  return date;
 }
 
 // ══════════════════════════════════════════════════════════
@@ -214,7 +235,7 @@ export async function exportarCSV(tipo, periodo) {
 // RESPALDO JSON — EXPORTAR / VALIDAR / IMPORTAR
 // ══════════════════════════════════════════════════════════
 
-const TABLAS = ['productos', 'insumos', 'costos', 'ventas', 'detalleVenta', 'producciones', 'recetas', 'perfiles', 'finanzas', 'movimientosFinanzas'];
+const TABLAS = ['productos', 'insumos', 'costos', 'ventas', 'detalleVenta', 'producciones', 'recetas', 'perfiles', 'finanzas', 'movimientosFinanzas', 'clientes', 'pedidos'];
 
 /**
  * Exporta todas las tablas de IndexedDB como archivo JSON y lo comparte.
@@ -230,7 +251,7 @@ async function _generarRespaldo() {
   const config = store.getState().config || null;
   return JSON.stringify({
     _formato:     'tamalitos-respaldo',
-    _version:     '3.4.0',
+    _version:     '4.0.0',
     _exportadoEn: new Date().toISOString(),
     _dispositivo: getDeviceId(),
     _config:      config,
