@@ -2,15 +2,15 @@
  * db.js — Wrapper de IndexedDB para TamalitosAPP
  *
  * Proporciona una API async/await limpia sobre IndexedDB.
- * Versión de esquema: 4
+ * Versión de esquema: 5
  * Object Stores: productos, insumos, costos, ventas, detalleVenta, producciones,
- *                recetas, perfiles, finanzas, movimientosFinanzas
+ *                recetas, perfiles, finanzas, movimientosFinanzas, clientes, pedidos
  */
 
 import { hoy } from './utils.js';
 
 const DB_NAME    = 'TamalitosAPP';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 // Singleton de la conexión a la base de datos
 let _db = null;
@@ -122,6 +122,18 @@ function _crearEsquema(db, oldVersion, tx) {
     const store = db.createObjectStore('movimientosFinanzas', { keyPath: 'id' });
     store.createIndex('fecha', 'fecha', { unique: false });
     store.createIndex('tipo',  'tipo',  { unique: false });
+  }
+
+  // ── Clientes ────────────────────────────────────────────────
+  // { id, nombre, descripcion, domicilio, notas, creadoEn }
+  if (!db.objectStoreNames.contains('clientes')) {
+    db.createObjectStore('clientes', { keyPath: 'id' });
+  }
+
+  // ── Pedidos ─────────────────────────────────────────────────
+  // { id, clienteId, clienteNombre, fechaEntrega, items: [], total, anticipo, descuento, nota, estado, creadoEn }
+  if (!db.objectStoreNames.contains('pedidos')) {
+    db.createObjectStore('pedidos', { keyPath: 'id' });
   }
 
   // Migración v2 → v3: perfil "General" + backfill de ventas
@@ -561,7 +573,6 @@ export async function guardarVentaCompleta(venta, detalles) {
 
 /**
  * Guarda una producción en una transacción atómica:
- *   - Resta del inventario cada insumo usado.
  *   - Suma la cantidad producida al producto.
  *   - Guarda el histórico en 'producciones'.
  *
@@ -569,32 +580,18 @@ export async function guardarVentaCompleta(venta, detalles) {
  * @param {string} produccion.productoId
  * @param {string} produccion.nombreProducto
  * @param {number} produccion.cantidadProducida
- * @param {Array}  produccion.insumosUsados — [{ insumoId, nombreInsumo, cantidad }]
  * @returns {Promise<string>} — id de la producción creada
  */
-export async function guardarProduccion({ productoId, nombreProducto, cantidadProducida, insumosUsados, costoTotal = 0 }) {
+export async function guardarProduccion({ productoId, nombreProducto, cantidadProducida }) {
   const db = await openDB();
 
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(['insumos', 'productos', 'producciones'], 'readwrite');
+    const tx = db.transaction(['productos', 'producciones'], 'readwrite');
     tx.onerror = () => reject(tx.error);
 
     const ahora    = new Date();
     const id       = `produccion_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`;
-    const storeInsumos   = tx.objectStore('insumos');
     const storeProductos = tx.objectStore('productos');
-
-    // Restar insumos usados (permite quedar en negativo)
-    for (const u of insumosUsados) {
-      const req = storeInsumos.get(u.insumoId);
-      req.onsuccess = () => {
-        const insumo = req.result;
-        if (insumo) {
-          insumo.cantidad = (insumo.cantidad ?? 0) - u.cantidad;
-          storeInsumos.put(insumo);
-        }
-      };
-    }
 
     // Sumar producto
     const reqProd = storeProductos.get(productoId);
@@ -612,8 +609,8 @@ export async function guardarProduccion({ productoId, nombreProducto, cantidadPr
       productoId,
       nombreProducto,
       cantidadProducida,
-      insumosUsados,
-      costoTotal,
+      insumosUsados: [],
+      costoTotal: 0,
       fecha:     hoy(),
       creadoEn:  ahora.toISOString(),
     });
@@ -695,7 +692,7 @@ export async function cancelarVenta(ventaId, motivo) {
  * @returns {Promise<Object>}
  */
 export async function exportarTodo() {
-  const [productos, insumos, costos, ventas, detalleVenta, producciones, recetas, perfiles, finanzas, movimientosFinanzas] = await Promise.all([
+  const [productos, insumos, costos, ventas, detalleVenta, producciones, recetas, perfiles, finanzas, movimientosFinanzas, clientes, pedidos] = await Promise.all([
     getAll('productos'),
     getAll('insumos'),
     getAll('costos'),
@@ -706,9 +703,11 @@ export async function exportarTodo() {
     getAll('perfiles'),
     getAll('finanzas'),
     getAll('movimientosFinanzas'),
+    getAll('clientes'),
+    getAll('pedidos'),
   ]);
 
-  return { productos, insumos, costos, ventas, detalleVenta, producciones, recetas, perfiles, finanzas, movimientosFinanzas };
+  return { productos, insumos, costos, ventas, detalleVenta, producciones, recetas, perfiles, finanzas, movimientosFinanzas, clientes, pedidos };
 }
 
 /**
@@ -717,7 +716,7 @@ export async function exportarTodo() {
  * @param {Object} respaldo — Objeto con las 5 tablas
  */
 export async function importarRespaldo(respaldo) {
-  const stores = ['productos', 'insumos', 'costos', 'ventas', 'detalleVenta', 'producciones', 'recetas', 'perfiles', 'finanzas', 'movimientosFinanzas'];
+  const stores = ['productos', 'insumos', 'costos', 'ventas', 'detalleVenta', 'producciones', 'recetas', 'perfiles', 'finanzas', 'movimientosFinanzas', 'clientes', 'pedidos'];
 
   for (const storeName of stores) {
     await clearStore(storeName);

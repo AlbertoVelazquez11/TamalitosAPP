@@ -1,18 +1,19 @@
 /**
  * historial.js — Historial de Ventas (Sprint 4)
  *
- * HU-050: Listado de ventas + resumen diario (ventas, gastos y utilidad)
+ * HU-050: Listado de ventas + resumen diario (ventas y tamales vendidos por tipo)
  * HU-051: Filtro por fecha con input date nativo
  * HU-052: Detalle de venta (desglose de productos inline)
  * HU-053: Cancelación de venta solo dentro de las últimas 24 h
  */
 
-import { getVentasPorFecha, getCostosPorFecha, getDetallesByVentaId, cancelarVenta, put, aplicarMovimiento } from '../db.js';
+import { getVentasPorFecha, getDetallesByVentaId, cancelarVenta, put, aplicarMovimiento } from '../db.js';
 import { crearDateFilter } from '../components/date-filter.js';
 import { modal }           from '../components/modal.js';
 import { toast }           from '../components/toast.js';
 import { esc, formatMXN, formatFecha, formatHora, hoy } from '../utils.js';
 import { navegarAtras }    from '../router.js';
+import { icon }            from '../components/icons.js';
 
 const VENTANA_CANCELACION_MS = 24 * 60 * 60 * 1000;
 const PAGE_SIZE              = 50; // Paginación "cargar más" para listas largas (Sprint 5 — 5.3)
@@ -32,7 +33,7 @@ export async function render(container) {
   container.innerHTML = `
     <div class="view">
       <div class="view-header">
-        <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">←</button>
+        <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">${icon('arrow-left', 20)}</button>
         <h1 class="view-header__title">Historial de Ventas</h1>
       </div>
 
@@ -94,10 +95,17 @@ async function _renderResumen(container, ventas, fecha) {
 
   const total = ingresos.reduce((s, v) => s + (v.total || 0), 0);
 
-  // Gastos del día para calcular la utilidad bruta (HU-050)
-  const costos   = await getCostosPorFecha(fecha, fecha);
-  const gastos   = costos.reduce((s, c) => s + (c.monto || 0), 0);
-  const utilidad = total - gastos;
+  // Tamales vendidos por tipo (cantidad agregada por producto)
+  const detallesAll = await Promise.all(cobradas.map(v => getDetallesByVentaId(v.id)));
+  const porTipo = new Map();
+  cobradas.forEach((v, i) => {
+    for (const d of (detallesAll[i] || [])) {
+      porTipo.set(d.nombreProducto, (porTipo.get(d.nombreProducto) || 0) + (d.cantidad || 0));
+    }
+  });
+  const tamalesPorTipo = [...porTipo.entries()]
+    .map(([nombre, cantidad]) => ({ nombre, cantidad }))
+    .sort((a, b) => b.cantidad - a.cantidad);
 
   resumenEl.innerHTML = `
     <div class="summary-card">
@@ -108,17 +116,17 @@ async function _renderResumen(container, ventas, fecha) {
       <span class="summary-card__value">${formatMXN(total)}</span>
       <span class="summary-card__label">Total vendido</span>
     </div>
-    <div class="summary-card summary-card--expense">
-      <span class="summary-card__value">${formatMXN(gastos)}</span>
-      <span class="summary-card__label">Gastos</span>
-    </div>
-    <div class="summary-card summary-card--profit">
-      <span class="summary-card__value">${formatMXN(utilidad)}</span>
-      <span class="summary-card__label">Utilidad</span>
+    <div class="summary-card" style="grid-column: 1 / -1; text-align: left;">
+      <span class="summary-card__label">Tamales vendidos por tipo</span>
+      <div style="margin-top: var(--space-2);">
+        ${tamalesPorTipo.length === 0
+          ? '<p class="text-sm text-muted">Sin ventas hoy.</p>'
+          : tamalesPorTipo.map(t => `<div class="cobro-item-row"><span>${esc(t.nombre)}</span><span>${t.cantidad}</span></div>`).join('')}
+      </div>
     </div>
     ${(fiadas.length + sinIngreso.length) > 0 ? `
       <p class="text-sm text-muted" style="grid-column: 1 / -1; text-align: center; margin: 0;">
-        ⚠️ ${fiadas.length} fiada${fiadas.length !== 1 ? 's' : ''} pendiente${fiadas.length !== 1 ? 's' : ''} · ${sinIngreso.length} sin ingreso
+        ${icon('alert', 16)} ${fiadas.length} fiada${fiadas.length !== 1 ? 's' : ''} pendiente${fiadas.length !== 1 ? 's' : ''} · ${sinIngreso.length} sin ingreso
       </p>` : ''}
   `;
 }
@@ -210,7 +218,7 @@ function _crearTarjetaVenta(venta, detalles, container) {
           Cancelar
         </button>` : `
         <span class="text-xs text-muted" style="white-space: nowrap;"
-              title="Solo se pueden cancelar ventas de las últimas 24 horas">🔒 No cancelable</span>`)}
+              title="Solo se pueden cancelar ventas de las últimas 24 horas">${icon('lock', 14)} No cancelable</span>`)}
     </div>
 
     <!-- Detalle de productos -->

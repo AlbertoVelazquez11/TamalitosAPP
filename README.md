@@ -57,6 +57,21 @@ TamalitosAPP/
 - **Perfiles (PDV):** perfiles de venta con perfil activo; ventas asociadas a perfil.
 - **Dashboard ampliado:** períodos día / 15 días / mes / 3 meses / año; costo por producción y ventas por perfil.
 
+## 🆕 Novedades v3.4.0
+
+- **Look & feel:** tarjetas con sombras en capas, fondo con gradiente sutil y jerarquía tipográfica refinada.
+- **Iconos SVG:** sistema de iconos inline (`icon()`) para acciones (volver, editar, borrar, exportar, tema) — se mantienen los emojis temáticos.
+- **Accesibilidad:** soporte de `prefers-reduced-motion`.
+- **Cifras alineadas:** `tabular-nums` en montos, totales y cantidades.
+
+## 🆕 Novedades v4.0.0
+
+- **Producción simple:** solo producto y cantidad (sin receta ni insumos).
+- **Dashboard:** filtros "Hoy / Fin de semana / Mes / Historico"; sin gráfica de producción.
+- **Historial:** desglose "Tamales vendidos por tipo"; sin Gastos/Utilidad.
+- **Clientes:** alta, edición y baja (nombre, descripción, domicilio, notas).
+- **Pedidos:** encargos con cliente, fecha, productos, total, anticipo, descuento y estados.
+
 ---
 
 ## 📖 Documentación Técnica
@@ -68,6 +83,8 @@ TamalitosAPP/
 - [Sprint 5 — Auditoría iOS, QA y Lanzamiento](Documentacion/sprint5_qa.md)
 - [v2.0.0 — Análisis y Plan por Fases](Documentacion/v2.0.0_cambios.md)
 - [v3.0.0 — Decisiones y Plan por Sprints](Documentacion/v3.0.0_cambios.md)
+- [v3.4.0 — Look & Feel Refresh](Documentacion/v3.4.0_cambios.md)
+- [v4.0.0 — Mejoras de negocio](Documentacion/v4.0.0_cambios.md)
 
 ---
 

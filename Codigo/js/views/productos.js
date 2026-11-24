@@ -19,6 +19,7 @@ import { toast }                  from '../components/toast.js';
 import { crearSwipeItem }         from '../components/swipe-item.js';
 import { esc, formatMXN, formatCantidad, generarId, hoy } from '../utils.js';
 import { navegarAtras }           from '../router.js';
+import { icon }                     from '../components/icons.js';
 
 // Registro de funciones de cleanup de los swipe handlers activos
 let _swipeCleanups = [];
@@ -29,7 +30,7 @@ export async function render(container) {
   container.innerHTML = `
     <div class="view">
       <div class="view-header">
-        <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">←</button>
+        <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">${icon('arrow-left', 20)}</button>
         <h1 class="view-header__title">Productos</h1>
         <div class="view-header__actions">
           <button class="btn btn-primary btn-sm" id="btn-nuevo">+ Nuevo</button>

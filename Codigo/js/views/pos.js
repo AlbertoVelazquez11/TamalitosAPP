@@ -21,6 +21,7 @@ import { modal }   from '../components/modal.js';
 import { toast }   from '../components/toast.js';
 import { esc, formatMXN, formatCantidad, hoy, ahoraHora } from '../utils.js';
 import { navegar, navegarAtras } from '../router.js';
+import { icon } from '../components/icons.js';
 
 // Referencia a los productos activos para reflejar stock sin recargar la vista
 let _productosActuales = [];
@@ -50,7 +51,7 @@ export async function render(container) {
       <!-- Header: necesita padding-top para respetar safe-area (notch/dynamic island)
            ya que #app.pos-active resetea el padding del #app -->
       <div class="view-header pos-header">
-        <button class="btn btn-icon" id="btn-back" aria-label="Regresar">←</button>
+        <button class="btn btn-icon" id="btn-back" aria-label="Regresar">${icon('arrow-left', 20)}</button>
         <h1 class="view-header__title">Venta</h1>
         <div class="view-header__actions">
           <button class="btn btn-icon btn-ghost" id="btn-finanzas" aria-label="Caja y resumen del día">💰</button>
@@ -284,7 +285,7 @@ function _abrirModalCobro(pedido) {
     contenido: contenidoHTML,
     botones: [
       { texto: 'Cancelar',        clase: 'btn-ghost',   accion: () => cerrar() },
-      { texto: '✓ Confirmar Cobro', clase: 'btn-primary', accion: () => _confirmarCobro(cerrar, subtotal) },
+      { texto: `${icon('check', 18)} Confirmar Cobro`, clase: 'btn-primary', accion: () => _confirmarCobro(cerrar, subtotal) },
     ],
   });
 

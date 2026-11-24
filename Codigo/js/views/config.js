@@ -7,6 +7,7 @@ import { store, guardarConfig } from '../store.js';
 import { navegar, navegarAtras } from '../router.js';
 import { toast }                 from '../components/toast.js';
 import { modal }                 from '../components/modal.js';
+import { icon }                  from '../components/icons.js';
 import { esc }                   from '../utils.js';
 import {
   exportarCSV,
@@ -25,7 +26,7 @@ export async function render(container) {
   container.innerHTML = `
     <div class="view">
       <div class="view-header">
-        <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">←</button>
+        <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">${icon('arrow-left', 20)}</button>
         <h1 class="view-header__title">Configuración</h1>
       </div>
 
@@ -39,7 +40,7 @@ export async function render(container) {
            </div>
            <div class="logo-actions">
              <label for="input-logo" class="btn btn-secondary btn-sm" style="cursor: pointer; display: inline-block;">
-               📸 Cambiar Logo
+               ${icon('camera', 18)} Cambiar Logo
              </label>
              <input type="file" id="input-logo" accept="image/png, image/jpeg, image/webp" style="display: none;">
              ${config?.logo ? `<button class="btn btn-ghost btn-sm" id="btn-borrar-logo" style="color: var(--color-danger);">Borrar</button>` : ''}
@@ -67,7 +68,7 @@ export async function render(container) {
         <p class="config-section-title">Apariencia</p>
         <div class="toggle-row">
           <label class="toggle-row__label" for="toggle-tema">
-            🌙 Modo Oscuro
+            ${icon('moon', 18)} Modo Oscuro
           </label>
           <label class="switch">
             <input type="checkbox" id="toggle-tema" ${config?.tema === 'dark' ? 'checked' : ''}>
@@ -80,7 +81,7 @@ export async function render(container) {
       <div class="config-section">
         <p class="config-section-title">Catálogos</p>
         <button class="btn btn-secondary btn-block" id="btn-productos">
-          📝 Administrar Productos
+          ${icon('edit', 18)} Administrar Productos
         </button>
       </div>
 
@@ -92,13 +93,13 @@ export async function render(container) {
           Exporta regularmente para tener un respaldo.
         </p>
         <button class="btn btn-secondary btn-block" id="btn-exportar">
-          📤 Exportar Datos (CSV)
+          ${icon('download', 18)} Exportar Datos (CSV)
         </button>
         <button class="btn btn-secondary btn-block" id="btn-respaldo">
-          🔒 Exportar Respaldo Completo
+          ${icon('lock', 18)} Exportar Respaldo Completo
         </button>
         <button class="btn btn-ghost btn-block" id="btn-importar">
-          📥 Importar Respaldo
+          ${icon('upload', 18)} Importar Respaldo
         </button>
         <input type="file" id="input-importar" accept=".json,application/json" style="display: none;">
       </div>

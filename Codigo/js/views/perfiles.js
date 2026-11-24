@@ -12,12 +12,13 @@ import { modal } from '../components/modal.js';
 import { toast } from '../components/toast.js';
 import { esc, generarId } from '../utils.js';
 import { navegarAtras } from '../router.js';
+import { icon } from '../components/icons.js';
 
 export async function render(container) {
   container.innerHTML = `
     <div class="view">
       <div class="view-header">
-        <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">←</button>
+        <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">${icon('arrow-left', 20)}</button>
         <h1 class="view-header__title">Perfiles</h1>
         <div class="view-header__actions">
           <button class="btn btn-primary btn-sm" id="btn-nuevo">+ Nuevo</button>

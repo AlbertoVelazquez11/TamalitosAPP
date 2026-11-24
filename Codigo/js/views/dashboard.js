@@ -12,19 +12,19 @@
  *  - Los "ingresos" por producto usan el precio de venta (snapshot), no el precio actual.
  */
 
-import { getVentasPorFecha, getDetallesByVentaId, getProduccionesPorFecha } from '../db.js';
+import { getVentasPorFecha, getDetallesByVentaId } from '../db.js';
 import { rangoDePeriodo } from '../export.js';
 import { esc, formatMXN, formatCantidad } from '../utils.js';
 import { navegarAtras } from '../router.js';
+import { icon } from '../components/icons.js';
 
 const COLORES = ['#FFAFCC', '#CDB4DB', '#A2D2FF', '#FFC8DD', '#b8a0e0', '#f0a855', '#2ecc8a', '#60b8ff', '#f06e85', '#7a8ab8'];
 
 const PERIODOS = [
-  { id: 'dia',    label: 'Hoy' },
-  { id: '15dias', label: '15 días' },
-  { id: 'mes',    label: 'Mes' },
-  { id: '3meses', label: '3 meses' },
-  { id: 'anio',   label: 'Año' },
+  { id: 'dia',         label: 'Hoy' },
+  { id: 'findesemana', label: 'Fin de semana' },
+  { id: '4semanas',    label: 'Mes' },
+  { id: 'historico',   label: 'Historico' },
 ];
 
 // Estado del toggle "Sin ingreso" (true = mostrar, false = ocultar)
@@ -35,7 +35,7 @@ export async function render(container) {
   container.innerHTML = `
     <div class="view">
       <div class="view-header">
-        <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">←</button>
+        <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">${icon('arrow-left', 20)}</button>
         <h1 class="view-header__title">Dashboard</h1>
       </div>
 
@@ -50,17 +50,13 @@ export async function render(container) {
       <!-- Gráfica por producto -->
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: var(--space-3);">
         <div class="section-title" style="margin:0;">Venta por producto</div>
-        <button class="btn btn-sm btn-primary" id="dash-toggle-sin-ingreso" type="button" aria-pressed="true">👁 Sin ingreso</button>
+        <button class="btn btn-sm btn-primary" id="dash-toggle-sin-ingreso" type="button" aria-pressed="true">${icon('eye', 16)} Sin ingreso</button>
       </div>
       <div id="dash-pie-productos"></div>
 
       <!-- Ventas por perfil -->
       <div class="section-title" style="margin-top: var(--space-5);">Ventas por perfil</div>
       <div id="dash-pie-perfiles"></div>
-
-      <!-- Costo por producción -->
-      <div class="section-title" style="margin-top: var(--space-5);">Costo por producción</div>
-      <div id="dash-costos"></div>
     </div>
   `;
 
@@ -95,7 +91,7 @@ function _actualizarToggle(container) {
   if (!btn) return;
   btn.classList.toggle('btn-primary', _mostrarSinIngreso);
   btn.classList.toggle('btn-secondary', !_mostrarSinIngreso);
-  btn.innerHTML = _mostrarSinIngreso ? '👁 Sin ingreso' : '🚫 Sin ingreso';
+  btn.innerHTML = _mostrarSinIngreso ? `${icon('eye', 16)} Sin ingreso` : `${icon('eye-off', 16)} Sin ingreso`;
   btn.setAttribute('aria-pressed', String(_mostrarSinIngreso));
 }
 
@@ -110,7 +106,6 @@ async function _cargar(container, periodo) {
   const { inicio, fin } = rangoDePeriodo(periodo);
   const ventas    = await getVentasPorFecha(inicio, fin);
   const vigentes  = ventas.filter(v => v.estado !== 'cancelada');
-  const producciones = await getProduccionesPorFecha(inicio, fin);
 
   // Consultar detalles en paralelo
   const detallesAll = await Promise.all(
@@ -185,9 +180,6 @@ async function _cargar(container, periodo) {
 
   // Ventas por perfil
   _renderPie(container.querySelector('#dash-pie-perfiles'), [...porPerfil.values()]);
-
-  // Costo por producción
-  _renderCostosBarras(container.querySelector('#dash-costos'), producciones);
 }
 
 // ══════════════════════════════════════════════════════════
@@ -254,72 +246,3 @@ function _buildPiePaths(slices, cx, cy, r) {
   }).join('');
 }
 
-// ══════════════════════════════════════════════════════════
-// GRÁFICA DE BARRAS — COSTO POR PRODUCCIÓN
-// ══════════════════════════════════════════════════════════
-
-function _renderCostosBarras(wrap, producciones) {
-  if (!producciones || producciones.length === 0) {
-    wrap.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-state__icon">🏭</div>
-        <p class="empty-state__title">Sin producciones</p>
-        <p class="empty-state__desc">No hay producciones registradas en este período.</p>
-      </div>`;
-    return;
-  }
-
-  // Tomar las últimas 5 producciones (más recientes) y mostrarlas en orden cronológico
-  const ultimas = [...producciones]
-    .sort((a, b) => (b.creadoEn || '').localeCompare(a.creadoEn || '') || (b.fecha || '').localeCompare(a.fecha || ''))
-    .slice(0, 5)
-    .sort((a, b) => (a.creadoEn || '').localeCompare(a.creadoEn || '') || (a.fecha || '').localeCompare(a.fecha || ''));
-
-  const maxAltura  = Math.max(...ultimas.map(p => p.cantidadProducida || 0), 1);
-  const totalCosto = ultimas.reduce((s, p) => s + (p.costoTotal || 0), 0);
-
-  const W = 320;
-  const H = 260;
-  const padX      = 42;   // espacio para etiquetas del eje Y (cantidad)
-  const padTop    = 28;   // espacio para etiquetas de $costo sobre las barras
-  const padBottom = 44;   // espacio para nombre del producto + cantidad bajo las barras
-  const plotH     = H - padTop - padBottom;
-  const anchoBarra = Math.max(24, Math.min(56, (W - padX - 12) / ultimas.length));
-
-  const recortar = (s, n) => (s && s.length > n) ? s.slice(0, n - 1) + '…' : (s || '');
-
-  // Barras con etiquetas visibles (iOS no muestra el <title> al tocar)
-  const bars = ultimas.map((p, i) => {
-    const h = ((p.cantidadProducida || 0) / maxAltura) * plotH;
-    const x = padX + i * anchoBarra;
-    const y = padTop + (plotH - h);
-    const cx = (x + anchoBarra / 2).toFixed(1);
-    return `
-      <rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(anchoBarra - 8).toFixed(1)}" height="${Math.max(h, 0).toFixed(1)}" rx="2" fill="var(--color-primary)">
-        <title>${esc(p.nombreProducto)} — ${formatCantidad(p.cantidadProducida)} ud — ${formatMXN(p.costoTotal || 0)}</title>
-      </rect>
-      <text x="${cx}" y="${(y - 4).toFixed(1)}" text-anchor="middle" font-size="9" fill="var(--color-text-muted)">${formatMXN(p.costoTotal || 0)}</text>
-      <text x="${cx}" y="${(padTop + plotH + 12).toFixed(1)}" text-anchor="middle" font-size="9" fill="var(--color-text)">${esc(recortar(p.nombreProducto, 14))}</text>
-      <text x="${cx}" y="${(padTop + plotH + 24).toFixed(1)}" text-anchor="middle" font-size="9" fill="var(--color-text-muted)">${formatCantidad(p.cantidadProducida)}</text>`;
-  }).join('');
-
-  // Escala del eje Y (cantidad producida): 0, mitad y máximo
-  const escala = [0, 0.5, 1].map(f => {
-    const val = f * maxAltura;
-    const y   = padTop + plotH - (f * plotH);
-    return `
-      <line x1="${padX}" y1="${y.toFixed(1)}" x2="${W - 8}" y2="${y.toFixed(1)}" stroke="var(--color-border)" stroke-width="1" stroke-dasharray="2,2" />
-      <text x="${(padX - 4).toFixed(1)}" y="${(y + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--color-text-muted)">${formatCantidad(val)}</text>`;
-  }).join('');
-
-  wrap.innerHTML = `
-    <div class="dash-pie-wrap">
-      <svg width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="Costo por producción">
-        ${escala}
-        ${bars}
-      </svg>
-      <p class="text-sm text-muted" style="text-align:center;">
-        ${ultimas.length} producción${ultimas.length !== 1 ? 'es' : ''} · Costo total ${formatMXN(totalCosto)}
-      </p>
-    </div>`;
-}

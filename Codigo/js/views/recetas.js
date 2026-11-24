@@ -13,6 +13,7 @@ import { toast } from '../components/toast.js';
 import { crearSwipeItem } from '../components/swipe-item.js';
 import { esc, generarId, formatCantidad, formatMXN, ceil1 } from '../utils.js';
 import { navegarAtras } from '../router.js';
+import { icon } from '../components/icons.js';
 
 let _swipeCleanups = [];
 
@@ -22,7 +23,7 @@ export async function render(container) {
   container.innerHTML = `
     <div class="view">
       <div class="view-header">
-        <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">←</button>
+        <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">${icon('arrow-left', 20)}</button>
         <h1 class="view-header__title">Recetas</h1>
         <div class="view-header__actions">
           <button class="btn btn-icon" id="btn-calculadora" aria-label="Calculadora de producción">🧮</button>
@@ -102,7 +103,7 @@ async function _renderLista(container) {
 
     const { elemento, cleanup } = crearSwipeItem({
       contenidoHTML: itemHTML,
-      accionIcono:   '🗑',
+      accionIcono:   icon('trash', 20),
       accionTexto:   'Eliminar',
       accionClase:   'swipe-action-btn--delete',
       anchoAccion:   90,
@@ -246,7 +247,7 @@ function _crearFilaInsumo(insumos, valor = null) {
     <input class="form-input r-insumo-cantidad" type="number"
            min="0" step="0.1" placeholder="0" inputmode="decimal" autocomplete="off"
            value="${valor?.cantidad ?? ''}">
-    <button type="button" class="btn btn-icon btn-ghost r-insumo-remove" aria-label="Quitar insumo">✕</button>
+    <button type="button" class="btn btn-icon btn-ghost r-insumo-remove" aria-label="Quitar insumo">${icon('x', 18)}</button>
   `;
 
   const search   = fila.querySelector('.r-insumo-search');

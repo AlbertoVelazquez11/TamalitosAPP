@@ -18,6 +18,7 @@ import { modal }           from '../components/modal.js';
 import { toast }           from '../components/toast.js';
 import { esc, formatMXN, formatFecha } from '../utils.js';
 import { navegarAtras }    from '../router.js';
+import { icon } from '../components/icons.js';
 
 const ICONO_MOV = {
   venta:            '💰',
@@ -33,7 +34,7 @@ export async function render(container) {
   container.innerHTML = `
     <div class="view">
       <div class="view-header">
-        <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">←</button>
+        <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">${icon('arrow-left', 20)}</button>
         <h1 class="view-header__title">Finanzas</h1>
       </div>
 
@@ -47,7 +48,7 @@ export async function render(container) {
             <div class="text-sm text-muted">Caja</div>
             <div id="fin-caja" style="font-size: var(--font-size-xl); font-weight: var(--font-weight-bold);"></div>
           </div>
-          <button class="btn btn-secondary btn-sm" id="btn-ajustar-caja">✏️ Ajustar Caja</button>
+          <button class="btn btn-secondary btn-sm" id="btn-ajustar-caja">${icon('edit', 16)} Ajustar Caja</button>
         </div>
       </div>
 
@@ -58,7 +59,7 @@ export async function render(container) {
             <div class="text-sm text-muted">Fondo</div>
             <div id="fin-fondo" style="font-size: var(--font-size-xl); font-weight: var(--font-weight-bold);"></div>
           </div>
-          <button class="btn btn-secondary btn-sm" id="btn-aportar-fondo">➕ Aportar a Fondo</button>
+          <button class="btn btn-secondary btn-sm" id="btn-aportar-fondo">${icon('plus', 16)} Aportar a Fondo</button>
         </div>
       </div>
 

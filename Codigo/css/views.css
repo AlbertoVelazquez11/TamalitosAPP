@@ -286,12 +286,14 @@
   font-size: var(--font-size-xs);
   color: var(--color-primary);
   font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
 }
 
 .product-btn__stock {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── Panel de la Comanda (panel inferior del POS) ── */
@@ -389,6 +391,7 @@
   min-width: 24px;
   text-align: center;
   color: var(--color-text);
+  font-variant-numeric: tabular-nums;
 }
 
 .order-item__subtotal {
@@ -397,6 +400,7 @@
   color: var(--color-text);
   min-width: 56px;
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Fila del total */
@@ -417,6 +421,7 @@
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -681,13 +686,14 @@
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Badge fiado/pendiente en el historial */
 .badge-pending {
-  background-color: #fef3c7;
-  color: #92400e;
-  border: 1px solid #fde68a;
+  background-color: var(--color-pending-bg);
+  color: var(--color-pending);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-full);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
@@ -711,6 +717,7 @@
   font-size: var(--font-size-sm);
   color: var(--color-text);
   border-bottom: 1px solid var(--color-divider);
+  font-variant-numeric: tabular-nums;
 }
 
 .cobro-item-row:last-child {
@@ -735,6 +742,7 @@
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
   color: var(--color-primary);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Toggle de fiado (discreto) */
@@ -799,6 +807,7 @@
   font-weight: var(--font-weight-bold);
   color: var(--color-danger);
   flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Separador de mes/semana en el historial */
@@ -920,6 +929,7 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .dash-legend-ingreso {
@@ -927,4 +937,5 @@
   text-align: right;
   color: var(--color-text);
   font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
 }

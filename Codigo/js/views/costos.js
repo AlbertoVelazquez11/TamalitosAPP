@@ -17,6 +17,7 @@ import { toast } from '../components/toast.js';
 import { modal } from '../components/modal.js';
 import { esc, formatMXN, hoy, generarId, formatFecha, formatCantidad } from '../utils.js';
 import { navegarAtras } from '../router.js';
+import { icon } from '../components/icons.js';
 
 export async function render(container) {
   // Cargar insumos para el selector
@@ -26,7 +27,7 @@ export async function render(container) {
   container.innerHTML = `
     <div class="view">
       <div class="view-header">
-        <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">←</button>
+        <button class="btn btn-icon view-header__back" id="btn-back" aria-label="Regresar">${icon('arrow-left', 20)}</button>
         <h1 class="view-header__title">Registrar Costo</h1>
       </div>
 
@@ -332,7 +333,7 @@ function _tarjetaCosto(c) {
               data-id="${esc(c.id)}"
               aria-label="Eliminar gasto"
               style="color: var(--color-text-muted); font-size: 1rem; min-height: 36px; width: 36px;">
-        ✕
+        ${icon('x', 18)}
       </button>
     </div>
   `;
