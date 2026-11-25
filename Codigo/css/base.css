@@ -15,6 +15,8 @@ html {
   overscroll-behavior-y: contain;
   /* Altura real en iOS sin contar barra de Safari */
   height: -webkit-fill-available;
+  /* Fondo de respaldo: evita franja blanca abajo en iOS */
+  background-color: var(--color-bg);
 }
 
 body {
@@ -29,7 +31,8 @@ body {
   position: fixed;
   inset: 0;
   width: 100%;
-  height: 100%;
+  /* Sin height fijo: `inset: 0` estira el body al viewport real.
+     `height: 100%` dejaba una franja blanca abajo en iOS. */
   overflow: hidden;
 
   /* Suavizar transición de tema */
