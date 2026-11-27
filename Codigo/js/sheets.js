@@ -204,6 +204,11 @@ export function filasDeCaja(movimientos = []) {
  * Arma el cuerpo que espera el Apps Script.
  * @param {Object} datos — salida de exportarTodo() (arrays por nombre de store)
  */
+/**
+ * Costos y Producciones NO se envían: la app todavía no registra esos datos de forma
+ * completa, así que llenarían la hoja con información engañosa. Sus columnas quedan
+ * definidas en HOJAS para cuando se activen.
+ */
 export function construirPayload(datos = {}, { dispositivo = '', version = APP_VERSION } = {}) {
   return {
     origen: 'TamalitosAPP',
@@ -215,8 +220,6 @@ export function construirPayload(datos = {}, { dispositivo = '', version = APP_V
       Productos:         filasDeProductos(datos.productos),
       Perfiles:          filasDePerfiles(datos.perfiles),
       Insumos:           filasDeInsumos(datos.insumos),
-      Costos:            filasDeCostos(datos.costos),
-      Producciones:      filasDeProducciones(datos.producciones),
       Clientes:          filasDeClientes(datos.clientes),
       Pedidos:           filasDePedidos(datos.pedidos),
       Pedidos_Lineas:    filasDePedidosLineas(datos.pedidos),

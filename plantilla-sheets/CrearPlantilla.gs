@@ -87,7 +87,11 @@ const NOTAS_LEEME = [
   ['  Ventas — una fila por venta (cabecera). Aquí sumas dinero: total, descuento, subtotal.'],
   ['  Ventas_Lineas — una fila por producto vendido. Aquí sacas "qué se vende más" y "cuántas piezas".'],
   ['  No sumes total en Ventas_Lineas: repite la venta en cada línea y multiplicaría el resultado.'],
-  ['  Costos — una fila por gasto. Caja_Movimientos es el libro de la caja: ventas, gastos, ajustes.'],
+  ['  Caja_Movimientos — el libro de la caja: ventas, gastos y ajustes.'],
+  [''],
+  ['Hojas pendientes (vacías a propósito):'],
+  ['  Costos y Producciones existen pero la app todavía no registra esos datos completos,'],
+  ['  así que no se envían. El Tablero tampoco calcula gastos ni utilidad por eso.'],
   [''],
   ['Reglas para que el sync no rompa nada:'],
   ['  · No insertes ni reordenes columnas: agrega las nuevas al final.'],
@@ -207,12 +211,11 @@ function _hojaTablero(libro) {
     ['Hoy',                          `=TODAY()`, 'fecha'],
     ['Ventas de hoy (piezas)',       `=SUMIFS(Ventas_Lineas!F:F, Ventas_Lineas!C:C, ${hoyISO})`, 'entero'],
     ['Ingreso de hoy',               `=SUMIFS(Ventas!J:J, Ventas!B:B, ${hoyISO}, Ventas!K:K, "cobrada")`, 'moneda'],
-    ['Gastos de hoy',                `=SUMIFS(Costos!F:F, Costos!B:B, ${hoyISO})`, 'moneda'],
-    ['Utilidad de hoy',              null, 'moneda'],
+    // Gastos y utilidad quedan fuera a propósito: la app no registró costos completos.
+    ['Nota: gastos y utilidad',      'Pendientes — la app aún no registra costos completos', 'texto'],
     ['',                             '', 'texto'],
     ['Ingreso del mes',              `=SUMIFS(Ventas!J:J, Ventas!B:B, ">="&${mesDesde}, Ventas!B:B, "<="&${mesHasta}, Ventas!K:K, "cobrada")`, 'moneda'],
-    ['Gastos del mes',               `=SUMIFS(Costos!F:F, Costos!B:B, ">="&${mesDesde}, Costos!B:B, "<="&${mesHasta})`, 'moneda'],
-    ['Utilidad del mes',             null, 'moneda'],
+
     ['Ticket promedio del mes',      null, 'moneda'],
     ['',                             '', 'texto'],
     ['Fiado pendiente',              `=SUMIFS(Ventas!J:J, Ventas!F:F, "pendiente", Ventas!K:K, "cobrada")`, 'moneda'],
@@ -230,8 +233,6 @@ function _hojaTablero(libro) {
 
   // Las dos fórmulas derivadas se arman sabiendo su propia fila.
   const filaDe = (etiqueta) => base + filas.findIndex(f => f[0] === etiqueta);
-  hoja.getRange(filaDe('Utilidad de hoy'), 2).setFormula(`=B${filaDe('Ingreso de hoy')}-B${filaDe('Gastos de hoy')}`);
-  hoja.getRange(filaDe('Utilidad del mes'), 2).setFormula(`=B${filaDe('Ingreso del mes')}-B${filaDe('Gastos del mes')}`);
   hoja.getRange(filaDe('Ticket promedio del mes'), 2)
     .setFormula(`=IFERROR(B${filaDe('Ingreso del mes')}/COUNTIFS(Ventas!B:B,">="&${mesDesde},Ventas!B:B,"<="&${mesHasta},Ventas!K:K,"cobrada"),0)`);
 
@@ -247,13 +248,47 @@ function _hojaTablero(libro) {
   const filaPerfiles = base + filas.length + 1;
   hoja.getRange(filaPerfiles, 1).setValue('Ventas por perfil (sólo cobradas)').setFontWeight('bold');
   hoja.getRange(filaPerfiles + 1, 1).setFormula(
-    `=IFERROR(QUERY(Ventas!D2:K, "select D, sum(J) where K = 'cobrada' group by D label sum(J) 'Total'", 0), "sin ventas")`
+    `=IFERROR(QUERY(Ventas!D2:K, "select A, sum(G) where H = 'cobrada' group by A label sum(G) 'Total'", 0), "sin ventas")`
   );
 
   hoja.setColumnWidth(1, 260);
   hoja.setColumnWidth(2, 220);
   hoja.setHiddenGridlines(true);
   return hoja;
+}
+
+/**
+ * Revisa el Tablero y escribe en el registro qué fórmula hay en cada celda y qué valor
+ * muestra. Sirve para compartir los errores sin adivinar: Ejecutar → revisarTablero →
+ * Ver → Registros (Ctrl+Enter) → copiar todo.
+ */
+function revisarTablero() {
+  const libro = _libroParaDiagnostico();
+  const hoja = libro.getSheetByName('Tablero');
+  if (!hoja) { Logger.log('No existe la hoja Tablero'); return; }
+
+  const ultima = Math.max(hoja.getLastRow(), 2);
+  const formulas = hoja.getRange(2, 1, ultima - 1, 2).getFormulas();
+  const valores  = hoja.getRange(2, 1, ultima - 1, 2).getDisplayValues();
+  const errores  = hoja.getRange(2, 1, ultima - 1, 2).getValues();
+
+  let conError = 0;
+  for (let i = 0; i < formulas.length; i++) {
+    const etiqueta = valores[i][0];
+    const formula  = formulas[i][1];
+    const mostrado = valores[i][1];
+    const crudo    = errores[i][1];
+    const esError  = typeof crudo === 'string' && crudo.charAt(0) === '#';
+    if (esError) conError++;
+    if (!formula && !etiqueta) continue;
+    Logger.log([etiqueta || '(vacío)', esError ? 'ERROR' : 'ok', mostrado, formula || '(sin fórmula)'].join(' | '));
+  }
+  Logger.log(`Celdas con error: ${conError}`);
+}
+
+function _libroParaDiagnostico() {
+  const id = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
+  return id ? SpreadsheetApp.openById(id) : SpreadsheetApp.getActiveSpreadsheet();
 }
 
 /**

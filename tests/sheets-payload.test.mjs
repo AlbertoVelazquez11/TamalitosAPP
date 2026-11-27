@@ -160,9 +160,16 @@ test('el payload completo valida contra el contrato', () => {
 test('un payload vacío también es válido (no se inventan filas)', () => {
   const payload = construirPayload({});
   assert.deepEqual(validarPayload(payload), []);
-  Object.keys(HOJAS).forEach(hoja => {
+  Object.keys(payload.hojas).forEach(hoja => {
     assert.deepEqual(payload.hojas[hoja], [], `la hoja ${hoja} debía venir vacía`);
   });
+});
+
+test('costos y producciones no se envían mientras la app no los registre completos', () => {
+  const payload = construirPayload({ costos: [{ id: 'c1', monto: 10 }], producciones: [{ id: 'p1' }] });
+  assert.equal('Costos' in payload.hojas, false);
+  assert.equal('Producciones' in payload.hojas, false);
+  assert.deepEqual(validarPayload(payload), []);
 });
 
 test('validarPayload detecta una columna que no existe en la plantilla', () => {
