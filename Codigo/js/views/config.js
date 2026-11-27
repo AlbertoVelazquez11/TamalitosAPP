@@ -8,7 +8,7 @@ import { navegar, navegarAtras } from '../router.js';
 import { toast }                 from '../components/toast.js';
 import { modal }                 from '../components/modal.js';
 import { icon }                  from '../components/icons.js';
-import { esc }                   from '../utils.js';
+import { esc, formatFecha, formatHora } from '../utils.js';
 import {
   exportarCSV,
   exportarRespaldoJSON,
@@ -19,6 +19,7 @@ import {
   sincronizarNube,
   restaurarDeNube,
 } from '../export.js';
+import { sincronizarSheets } from '../sheets.js';
 
 export async function render(container) {
   const { config } = store.getState();
@@ -126,6 +127,22 @@ export async function render(container) {
         </button>
       </div>
 
+      <!-- Google Sheets -->
+      <div class="config-section">
+        <p class="config-section-title">Google Sheets</p>
+        <button class="btn btn-secondary btn-block" id="btn-config-sheets">
+          ${config?.sheetsUrl ? '📊 Sheets: Configurado ✓' : '📊 Configurar Google Sheets'}
+        </button>
+        <button class="btn btn-secondary btn-block" id="btn-sincronizar-sheets">
+          📊 Sincronizar con Sheets
+        </button>
+        <p class="text-sm text-muted" style="margin-top: var(--space-2);">
+          ${config?.ultimaSyncSheets
+              ? 'Última sincronización: ' + esc(formatFecha(config.ultimaSyncSheets.slice(0, 10))) + ' ' + esc(formatHora(config.ultimaSyncSheets.slice(11, 19)))
+              : 'Todavía no sincronizaste con la hoja.'}
+        </p>
+      </div>
+
       <!-- Versión -->
       <div style="text-align:center; padding: var(--space-4) 0;">
         <span class="version-badge">TamalitosAPP v${esc(config?.version ?? '1.0.0')}</span>
@@ -231,6 +248,12 @@ export async function render(container) {
   });
   container.querySelector('#btn-sincronizar').addEventListener('click', () => {
     _sincronizar(container);
+  });
+  container.querySelector('#btn-config-sheets').addEventListener('click', () => {
+    _abrirModalSheets(container);
+  });
+  container.querySelector('#btn-sincronizar-sheets').addEventListener('click', () => {
+    _sincronizarSheets(container);
   });
   container.querySelector('#btn-restaurar-nube').addEventListener('click', () => {
     _restaurarDeNube();
@@ -470,6 +493,96 @@ async function _exportar(tipo, cerrar) {
   cerrar();
   const etiqueta = tipo === 'ventas' ? 'Ventas' : 'Gastos';
   toast.success(`${etiqueta} exportado${resultado.registros ? ` (${resultado.registros} registros)` : ''}.`);
+}
+
+// ══════════════════════════════════════════════════════════
+// GOOGLE SHEETS
+// ══════════════════════════════════════════════════════════
+
+function _abrirModalSheets(container) {
+  const config = store.getState().config || {};
+  const cerrar = modal.abrir({
+    titulo: 'Sincronizar con Google Sheets',
+    contenido: `
+      <p class="text-sm text-muted" style="margin-bottom: var(--space-3);">
+        Pega la URL de la aplicación web de Apps Script y el token que configuraste
+        (SYNC_TOKEN). La hoja debe tener las pestañas de la plantilla.
+      </p>
+      <div class="form-group">
+        <label class="form-label" for="sheets-url">URL de la aplicación web</label>
+        <input id="sheets-url" type="text" class="form-input"
+               value="${esc(config.sheetsUrl ?? '')}"
+               placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
+      </div>
+      <div class="form-group" style="margin-top: var(--space-3);">
+        <label class="form-label" for="sheets-token">Token</label>
+        <input id="sheets-token" type="text" class="form-input"
+               value="${esc(config.sheetsToken ?? '')}"
+               placeholder="el mismo SYNC_TOKEN del Apps Script" autocomplete="off">
+      </div>
+    `,
+    botones: [
+      { texto: 'Cancelar', clase: 'btn-ghost', accion: () => cerrar() },
+      { texto: 'Guardar', clase: 'btn-primary', accion: () => {
+        const url   = document.getElementById('sheets-url')?.value.trim();
+        const token = document.getElementById('sheets-token')?.value.trim();
+        if (!url) {
+          toast.error('Pega la URL de la aplicación web.');
+          return;
+        }
+        if (!token) {
+          toast.error('Falta el token del Apps Script.');
+          return;
+        }
+        guardarConfig({ sheetsUrl: url, sheetsToken: token });
+        toast.success('Google Sheets configurado.');
+        cerrar();
+        const btn = container.querySelector('#btn-config-sheets');
+        if (btn) btn.textContent = '📊 Sheets: Configurado ✓';
+      }},
+    ],
+  });
+}
+
+async function _sincronizarSheets(container) {
+  const btn = container.querySelector('#btn-sincronizar-sheets');
+  const config = store.getState().config || {};
+  if (!config.sheetsUrl || !config.sheetsToken) {
+    toast.error('Primero configura la URL y el token de Google Sheets.');
+    return;
+  }
+
+  btn.disabled = true;
+  const original = btn.textContent;
+  btn.textContent = '⏳ Enviando a la hoja…';
+  try {
+    const resultado = await sincronizarSheets();
+    if (resultado.ok) {
+      toast.success(`Hoja actualizada: ${resultado.insertados} nuevas, ${resultado.actualizados} actualizadas.`);
+    } else {
+      toast.error(_mensajeErrorSheets(resultado.error, resultado.detalle));
+    }
+  } catch (e) {
+    console.error('[Config] Error al sincronizar con Sheets:', e);
+    toast.error('Error al sincronizar con Google Sheets.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
+}
+
+function _mensajeErrorSheets(error, detalle) {
+  const mensajes = {
+    sin_url:          'Falta la URL de la aplicación web de Apps Script.',
+    sin_token:        'Falta el token del Apps Script.',
+    no_autorizado:    'El Apps Script rechazó el token. Revisa que coincida con SYNC_TOKEN.',
+    token_no_configurado: 'El Apps Script no tiene SYNC_TOKEN. Agrégalo en Propiedades del proyecto.',
+    payload_invalido: 'Los datos no tienen la forma que espera la hoja.',
+    lectura_local:    'No se pudieron leer los datos locales.',
+    sin_conexion:     'Sin conexión. Conectate a internet e intenta de nuevo.',
+    envio_fallido:    'La hoja rechazó el envío.',
+  };
+  return mensajes[error] || detalle || `Error: ${error || 'desconocido'}`;
 }
 
 // ══════════════════════════════════════════════════════════

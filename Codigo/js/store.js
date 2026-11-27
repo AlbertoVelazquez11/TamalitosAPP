@@ -262,6 +262,18 @@ export function cargarConfig() {
       config.syncApiKey = null;
       cambiado = true;
     }
+    if (config.sheetsUrl === undefined) {
+      config.sheetsUrl = null;
+      cambiado = true;
+    }
+    if (config.sheetsToken === undefined) {
+      config.sheetsToken = null;
+      cambiado = true;
+    }
+    if (config.ultimaSyncSheets === undefined) {
+      config.ultimaSyncSheets = null;
+      cambiado = true;
+    }
     if (cambiado) {
       try { localStorage.setItem(CONFIG_KEY, JSON.stringify(config)); } catch (e) { /* ignorar */ }
     }
@@ -329,6 +341,9 @@ function _configDefault() {
     telegramChatId:    null,        // chat_id destino (opcional)
     syncWorkerUrl:     null,        // URL del Worker para sync R2
     syncApiKey:        null,        // API key compartida (opcional)
+    sheetsUrl:         null,        // URL /exec del Apps Script de Google Sheets
+    sheetsToken:       null,        // token compartido con el Apps Script
+    ultimaSyncSheets:  null,        // ISO de la última sincronización con Sheets
   };
 }
 

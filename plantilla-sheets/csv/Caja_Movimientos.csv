@@ -1,0 +1,2 @@
+movimiento_id,fecha,tipo,monto,origen,destino,concepto,ref_id,creado_en
+mov_1764280820000_c5,2026-11-27,venta,120.00,,caja,Venta en POS,venta_1764280820000_a1b,2026-11-27T15:14:22.000Z

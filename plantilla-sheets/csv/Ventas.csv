@@ -1,0 +1,2 @@
+venta_id,fecha,hora,perfil,tipo,estado_pago,cliente,subtotal,descuento,total,estado,motivo_cancelacion,creado_en
+venta_1764280820000_a1b,2026-11-27,09:14:22,General,venta,pagada,,120.00,0,120.00,activa,,2026-11-27T15:14:22.000Z

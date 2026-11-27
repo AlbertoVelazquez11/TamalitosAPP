@@ -37,6 +37,7 @@ const ASSETS_TO_CACHE = [
   './js/version.js',
   './js/gestures.js',
   './js/export.js',
+  './js/sheets.js',
 
   // JS — Components
   './js/components/toast.js',
