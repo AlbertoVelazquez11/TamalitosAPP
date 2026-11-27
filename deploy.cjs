@@ -18,6 +18,8 @@ try {
   }
 
   console.log('🚀 Iniciando despliegue a Vercel Producción...');
+  // Sellar el caché del Service Worker antes de publicar (ver Codigo/js/version.js)
+  execSync('node scripts/sync-sw.js', { stdio: 'inherit' });
   // Intentar primero con la sesión activa del CLI de Vercel
   try {
     execSync('npx vercel --prod --yes', { stdio: 'inherit' });

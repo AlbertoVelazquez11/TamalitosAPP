@@ -4,11 +4,11 @@
  * Estrategia: Cache-First para el app shell + Stale-While-Revalidate
  * para mantener los assets actualizados en segundo plano.
  *
- * Cada nueva versión debe incrementar CACHE_NAME para forzar la
- * limpieza de cachés obsoletas en los clientes.
+ * CACHE_NAME se genera desde Codigo/js/version.js y lo reescribe
+ * scripts/sync-sw.js en cada despliegue; no se sube a mano.
  */
 
-const CACHE_NAME = 'tamalitos-v24';
+const CACHE_NAME = 'tamalitos-v25';
 
 // Recursos del app shell que se precachean en la instalación.
 // El SW debe poder servir la app completa sin ninguna petición a la red.
@@ -29,6 +29,7 @@ const ASSETS_TO_CACHE = [
   './js/store.js',
   './js/db.js',
   './js/utils.js',
+  './js/version.js',
   './js/gestures.js',
   './js/export.js',
 

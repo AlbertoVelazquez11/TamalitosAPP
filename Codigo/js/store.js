@@ -223,6 +223,8 @@ export function calcularSubtotal() {
 // HELPERS DE CONFIGURACIÓN
 // ══════════════════════════════════════════════════════════
 
+import { APP_VERSION } from './version.js';
+
 const CONFIG_KEY    = 'tamalitos_config';
 const DEVICE_ID_KEY = 'tamalitos_device_id';
 
@@ -236,8 +238,8 @@ export function cargarConfig() {
 
     // Migraciones (v1 → v2 → v3 → v3.2 → v3.3 → v3.4 → v4.0)
     let cambiado = false;
-    if (config.version !== '4.0.0') {
-      config.version = '4.0.0';
+    if (config.version !== APP_VERSION) {
+      config.version = APP_VERSION;
       cambiado = true;
     }
     if (!config.perfilActivoId) {
@@ -318,7 +320,7 @@ export function importarConfig(config) {
 function _configDefault() {
   return {
     nombreNegocio:    'Mi Negocio',
-    version:          '4.0.0',
+    version:          APP_VERSION,
     tema:             'light',      // 'light' | 'dark'
     ultimaExportacion: null,
     logo:             null,         // Base64 string para el logo

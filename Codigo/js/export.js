@@ -18,6 +18,7 @@ import {
 } from './db.js';
 import { store, importarConfig, getDeviceId } from './store.js';
 import { hoy } from './utils.js';
+import { APP_VERSION } from './version.js';
 
 const BOM = '\uFEFF'; // BOM UTF-8 para compatibilidad con Excel/Numbers
 
@@ -251,7 +252,7 @@ async function _generarRespaldo() {
   const config = store.getState().config || null;
   return JSON.stringify({
     _formato:     'tamalitos-respaldo',
-    _version:     '4.0.0',
+    _version:     APP_VERSION,
     _exportadoEn: new Date().toISOString(),
     _dispositivo: getDeviceId(),
     _config:      config,
