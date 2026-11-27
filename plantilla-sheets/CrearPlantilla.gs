@@ -339,7 +339,7 @@ function diagnosticoEnHoja() {
     filas.push([etiqueta, esError ? 'ERROR' : 'ok', valores[i][1], formula || '(sin fórmula)']);
   }
 
-  filas.push([]);
+  filas.push(['', '', '', '']);
   filas.push(['Celdas con error', conError, '', '']);
   filas.push(['Revisado en', new Date().toISOString(), '', '']);
 
