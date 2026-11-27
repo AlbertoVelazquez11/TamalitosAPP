@@ -4,7 +4,7 @@
  * Parte del módulo db (ver db.js, que reexporta la API pública).
  */
 import { openDB } from './schema.js';
-import { getAll, getById, put } from './core.js';
+import { getAll, getById } from './core.js';
 import { hoy } from '../utils.js';
 
 // ══════════════════════════════════════════════════════════
@@ -28,33 +28,39 @@ export async function getFinanzas() {
  * @param {number} nuevoValor — valor absoluto de Caja (>= 0)
  */
 export async function ajustarCaja(nuevoValor) {
-  const fin = await getFinanzas();
-  fin.caja = nuevoValor;
-  fin.actualizadoEn = new Date().toISOString();
-  await put('finanzas', fin);
-  await _registrarMovimiento({
-    tipo:     'ajusteCaja',
-    monto:    nuevoValor,
-    concepto: 'Ajuste manual de Caja',
-  });
-  return fin;
-}
+  const db = await openDB();
 
-/**
- * Registra un movimiento en el ledger sin alterar saldos
- * (usado para el ajuste manual de Caja).
- */
-async function _registrarMovimiento({ tipo, monto, concepto = '', origen = null, destino = null, refId = null }) {
-  await put('movimientosFinanzas', {
-    id:       `mov_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-    tipo,
-    monto,
-    origen:   origen ?? null,
-    destino:  destino ?? null,
-    concepto,
-    refId:    refId ?? null,
-    fecha:    hoy(),
-    creadoEn: new Date().toISOString(),
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(['finanzas', 'movimientosFinanzas'], 'readwrite');
+    tx.onerror   = () => reject(tx.error);
+    tx.onabort   = () => reject(tx.error ?? new Error('Transacción abortada'));
+
+    const storeFin = tx.objectStore('finanzas');
+    const storeMov = tx.objectStore('movimientosFinanzas');
+    let ajustada = null;
+
+    const reqFin = storeFin.get(FINANZAS_ID);
+    reqFin.onsuccess = () => {
+      const fin = reqFin.result ?? { id: FINANZAS_ID, caja: 0, fondo: 0 };
+      fin.caja = nuevoValor;
+      fin.actualizadoEn = new Date().toISOString();
+      ajustada = fin;
+
+      storeFin.put(fin);
+      storeMov.put({
+        id:       `mov_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        tipo:     'ajusteCaja',
+        monto:    nuevoValor,
+        origen:   null,
+        destino:  null,
+        concepto: 'Ajuste manual de Caja',
+        refId:    null,
+        fecha:    hoy(),
+        creadoEn: new Date().toISOString(),
+      });
+    };
+
+    tx.oncomplete = () => resolve(ajustada);
   });
 }
 

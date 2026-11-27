@@ -2,13 +2,13 @@
  * schema.js — Nombre/versión de la base, apertura de la conexión y migraciones de IndexedDB.
  *
  * Parte del módulo db (ver db.js, que reexporta la API pública).
- * Versión de esquema: 5
+ * Versión de esquema: 6
  * Object Stores: productos, insumos, costos, ventas, detalleVenta, producciones,
  *                recetas, perfiles, finanzas, movimientosFinanzas, clientes, pedidos
  */
 
 const DB_NAME    = 'TamalitosAPP';
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 
 // Singleton de la conexión a la base de datos
 let _db = null;
@@ -125,13 +125,16 @@ function _crearEsquema(db, oldVersion, tx) {
   // ── Clientes ────────────────────────────────────────────────
   // { id, nombre, descripcion, domicilio, notas, creadoEn }
   if (!db.objectStoreNames.contains('clientes')) {
-    db.createObjectStore('clientes', { keyPath: 'id' });
+    const store = db.createObjectStore('clientes', { keyPath: 'id' });
+    store.createIndex('nombre', 'nombre', { unique: false });
   }
 
   // ── Pedidos ─────────────────────────────────────────────────
   // { id, clienteId, clienteNombre, fechaEntrega, items: [], total, anticipo, descuento, nota, estado, creadoEn }
   if (!db.objectStoreNames.contains('pedidos')) {
-    db.createObjectStore('pedidos', { keyPath: 'id' });
+    const store = db.createObjectStore('pedidos', { keyPath: 'id' });
+    store.createIndex('estado',       'estado',       { unique: false });
+    store.createIndex('fechaEntrega', 'fechaEntrega', { unique: false });
   }
 
   // Migración v2 → v3: perfil "General" + backfill de ventas
@@ -144,7 +147,28 @@ function _crearEsquema(db, oldVersion, tx) {
     _migrarV4(tx);
   }
 
+  // Migración v5 → v6: índices de clientes y pedidos
+  if (oldVersion < 6 && tx) {
+    _migrarV6(tx);
+  }
+
   console.log('[DB] Esquema creado/actualizado correctamente.');
+}
+
+/**
+ * Migración v5 → v6:
+ *  - Agrega los índices de búsqueda a los stores que ya existían sin ellos.
+ *  - Sólo crea el índice si falta, para poder correr también en bases nuevas.
+ */
+function _migrarV6(tx) {
+  const agregar = (storeName, nombre, campo) => {
+    if (!tx.objectStore(storeName).indexNames.contains(nombre)) {
+      tx.objectStore(storeName).createIndex(nombre, campo, { unique: false });
+    }
+  };
+  agregar('clientes', 'nombre',       'nombre');
+  agregar('pedidos',  'estado',       'estado');
+  agregar('pedidos',  'fechaEntrega', 'fechaEntrega');
 }
 
 /**
