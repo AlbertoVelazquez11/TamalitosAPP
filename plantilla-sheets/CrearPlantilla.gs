@@ -191,7 +191,15 @@ function _hojaDatos(libro, nombre, def) {
     });
   }
 
-  hoja.getRange(1, 1, 1, ancho).createFilter();
+  // Idempotente: una hoja no puede tener dos filtros, y re-ejecutar es normal.
+  // Si el filtro viejo no cubre las columnas nuevas, se rehace.
+  const filtro = hoja.getFilter();
+  if (filtro && filtro.getRange().getNumColumns() !== ancho) {
+    filtro.remove();
+  }
+  if (!hoja.getFilter()) {
+    hoja.getRange(1, 1, 1, ancho).createFilter();
+  }
   return hoja;
 }
 
