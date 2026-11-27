@@ -294,6 +294,53 @@ function revisarTablero() {
   Logger.log(`Celdas con error: ${conError}`);
 }
 
+/**
+ * Escribe el estado de cada fórmula del Tablero en una pestaña "Diagnóstico".
+ * Es lo más fácil de compartir: abres la pestaña, copias o tomas captura y listo.
+ */
+function diagnosticoEnHoja() {
+  const libro = _libroParaDiagnostico();
+  const tablero = libro.getSheetByName('Tablero');
+  if (!tablero) { throw new Error('No existe la hoja Tablero. Ejecuta crearPlantilla() primero.'); }
+
+  let hoja = libro.getSheetByName('Diagnóstico') || libro.insertSheet('Diagnóstico');
+  hoja.clear();
+
+  const ultima = Math.max(tablero.getLastRow(), 2);
+  const formulas = tablero.getRange(2, 1, ultima - 1, 2).getFormulas();
+  const valores  = tablero.getRange(2, 1, ultima - 1, 2).getDisplayValues();
+  const crudos   = tablero.getRange(2, 1, ultima - 1, 2).getValues();
+
+  const filas = [['Etiqueta', 'Estado', 'Valor que muestra', 'Fórmula']];
+  let conError = 0;
+
+  for (let i = 0; i < formulas.length; i++) {
+    const etiqueta = valores[i][0];
+    const formula  = formulas[i][1];
+    if (!etiqueta && !formula) continue;
+    const crudo    = crudos[i][1];
+    const esError  = typeof crudo === 'string' && crudo.charAt(0) === '#';
+    if (esError) conError++;
+    filas.push([etiqueta, esError ? 'ERROR' : 'ok', valores[i][1], formula || '(sin fórmula)']);
+  }
+
+  filas.push([]);
+  filas.push(['Celdas con error', conError, '', '']);
+  filas.push(['Revisado en', new Date().toISOString(), '', '']);
+
+  hoja.getRange(1, 1, filas.length, 4).setValues(filas);
+  hoja.getRange(1, 1, 1, 4).setFontWeight('bold').setBackground('#1f2937').setFontColor('#ffffff');
+  hoja.getRange(2, 2, filas.length - 1, 1).setFontWeight('bold');
+  hoja.setColumnWidth(1, 260);
+  hoja.setColumnWidth(2, 90);
+  hoja.setColumnWidth(3, 200);
+  hoja.setColumnWidth(4, 420);
+  hoja.setFrozenRows(1);
+
+  Logger.log('Diagnóstico escrito en la pestaña "Diagnóstico". Errores: ' + conError);
+  return 'Diagnóstico listo. Errores: ' + conError;
+}
+
 function _libroParaDiagnostico() {
   const id = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
   return id ? SpreadsheetApp.openById(id) : SpreadsheetApp.getActiveSpreadsheet();
