@@ -340,7 +340,7 @@ function _abrirModalSync(container) {
                placeholder="https://tu-worker.workers.dev" autocomplete="off">
       </div>
       <div class="form-group" style="margin-top: var(--space-3);">
-        <label class="form-label" for="sync-api-key">API key <span class="text-muted">(opcional)</span></label>
+        <label class="form-label" for="sync-api-key">API key <span class="text-muted">(obligatoria para sincronizar)</span></label>
         <input id="sync-api-key" type="text" class="form-input"
                value="${esc(config.syncApiKey ?? '')}"
                placeholder="clave compartida" autocomplete="off">

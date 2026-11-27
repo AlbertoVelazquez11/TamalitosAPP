@@ -98,6 +98,17 @@ export function checkAuth(request, env) {
   return provided === apiKey;
 }
 
+/**
+ * Autorización de los endpoints /sync.
+ * A diferencia de /backup, aquí la clave es obligatoria: sin API_KEY configurada
+ * el endpoint queda cerrado en lugar de abierto, porque expone el respaldo
+ * completo del negocio.
+ */
+export function checkSyncAuth(request, env) {
+  if (!env.API_KEY) return false;
+  return checkAuth(request, env);
+}
+
 // ══════════════════════════════════════════════════════════
 // TELEGRAM
 // ══════════════════════════════════════════════════════════
@@ -162,7 +173,7 @@ async function handleBackup(request, env, cors) {
 const KEY_LATEST = 'backups/latest.json';
 
 async function handleSyncPut(request, env, cors) {
-  if (!checkAuth(request, env)) {
+  if (!checkSyncAuth(request, env)) {
     return json({ ok: false, error: 'unauthorized' }, 401, cors);
   }
 
@@ -190,7 +201,7 @@ async function handleSyncPut(request, env, cors) {
 }
 
 async function handleSyncGet(request, env, cors) {
-  if (!checkAuth(request, env)) {
+  if (!checkSyncAuth(request, env)) {
     return json({ ok: false, error: 'unauthorized' }, 401, cors);
   }
 
@@ -210,7 +221,7 @@ async function handleSyncGet(request, env, cors) {
 }
 
 async function handleSyncList(request, env, cors) {
-  if (!checkAuth(request, env)) {
+  if (!checkSyncAuth(request, env)) {
     return json({ ok: false, error: 'unauthorized' }, 401, cors);
   }
 
