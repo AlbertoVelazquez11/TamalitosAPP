@@ -21,7 +21,7 @@ const HOJAS = {
     encabezados: ['venta_id', 'fecha', 'hora', 'perfil', 'tipo', 'estado_pago', 'cliente',
                   'subtotal', 'descuento', 'total', 'estado', 'motivo_cancelacion', 'creado_en'],
     tipos: { fecha: 'texto', hora: 'texto', subtotal: 'moneda', descuento: 'moneda', total: 'moneda' },
-    validacion: { tipo: ['venta', 'noIngreso'], estado_pago: ['pagada', 'pendiente'], estado: ['activa', 'cancelada'] },
+    validacion: { tipo: ['venta', 'noIngreso'], estado_pago: ['pagada', 'pendiente'], estado: ['cobrada', 'cancelada'] },
   },
   Ventas_Lineas: {
     encabezados: ['linea_id', 'venta_id', 'fecha', 'producto_id', 'producto', 'cantidad',
@@ -166,9 +166,10 @@ function _hojaDatos(libro, nombre, def) {
     Object.keys(def.validacion).forEach(col => {
       const i = def.encabezados.indexOf(col);
       if (i < 0) return;
+      // Las hojas de datos las escribe la app: la lista es una ayuda, no una reja.
       const regla = SpreadsheetApp.newDataValidation()
         .requireValueInList(def.validacion[col], true)
-        .setAllowInvalid(false)
+        .setAllowInvalid(true)
         .build();
       hoja.getRange(2, i + 1, hoja.getMaxRows() - 1, 1).setDataValidation(regla);
     });
@@ -193,16 +194,16 @@ function _hojaTablero(libro) {
   const filas = [
     ['Hoy',                          `=TODAY()`, 'fecha'],
     ['Ventas de hoy (piezas)',       `=SUMIFS(Ventas_Lineas!F:F, Ventas_Lineas!C:C, ${hoyISO})`, 'entero'],
-    ['Ingreso de hoy',               `=SUMIFS(Ventas!J:J, Ventas!B:B, ${hoyISO}, Ventas!K:K, "activa")`, 'moneda'],
+    ['Ingreso de hoy',               `=SUMIFS(Ventas!J:J, Ventas!B:B, ${hoyISO}, Ventas!K:K, "cobrada")`, 'moneda'],
     ['Gastos de hoy',                `=SUMIFS(Costos!F:F, Costos!B:B, ${hoyISO})`, 'moneda'],
     ['Utilidad de hoy',              null, 'moneda'],
     ['',                             '', 'texto'],
-    ['Ingreso del mes',              `=SUMIFS(Ventas!J:J, Ventas!B:B, ">="&${mesDesde}, Ventas!B:B, "<="&${mesHasta}, Ventas!K:K, "activa")`, 'moneda'],
+    ['Ingreso del mes',              `=SUMIFS(Ventas!J:J, Ventas!B:B, ">="&${mesDesde}, Ventas!B:B, "<="&${mesHasta}, Ventas!K:K, "cobrada")`, 'moneda'],
     ['Gastos del mes',               `=SUMIFS(Costos!F:F, Costos!B:B, ">="&${mesDesde}, Costos!B:B, "<="&${mesHasta})`, 'moneda'],
     ['Utilidad del mes',             null, 'moneda'],
     ['Ticket promedio del mes',      null, 'moneda'],
     ['',                             '', 'texto'],
-    ['Fiado pendiente',              `=SUMIFS(Ventas!J:J, Ventas!F:F, "pendiente", Ventas!K:K, "activa")`, 'moneda'],
+    ['Fiado pendiente',              `=SUMIFS(Ventas!J:J, Ventas!F:F, "pendiente", Ventas!K:K, "cobrada")`, 'moneda'],
     ['Pedidos por entregar',         '=COUNTIFS(Pedidos!H:H,"solicitado")+COUNTIFS(Pedidos!H:H,"anticipo")', 'entero'],
     ['Anticipos cobrados',           '=SUMIFS(Pedidos!F:F, Pedidos!H:H,"solicitado")+SUMIFS(Pedidos!F:F, Pedidos!H:H,"anticipo")', 'moneda'],
     ['',                             '', 'texto'],
@@ -220,7 +221,7 @@ function _hojaTablero(libro) {
   hoja.getRange(filaDe('Utilidad de hoy'), 2).setFormula(`=B${filaDe('Ingreso de hoy')}-B${filaDe('Gastos de hoy')}`);
   hoja.getRange(filaDe('Utilidad del mes'), 2).setFormula(`=B${filaDe('Ingreso del mes')}-B${filaDe('Gastos del mes')}`);
   hoja.getRange(filaDe('Ticket promedio del mes'), 2)
-    .setFormula(`=IFERROR(B${filaDe('Ingreso del mes')}/COUNTIFS(Ventas!B:B,">="&${mesDesde},Ventas!B:B,"<="&${mesHasta},Ventas!K:K,"activa"),0)`);
+    .setFormula(`=IFERROR(B${filaDe('Ingreso del mes')}/COUNTIFS(Ventas!B:B,">="&${mesDesde},Ventas!B:B,"<="&${mesHasta},Ventas!K:K,"cobrada"),0)`);
 
   filas.forEach(([, , fmt], i) => {
     const celda = hoja.getRange(base + i, 2);

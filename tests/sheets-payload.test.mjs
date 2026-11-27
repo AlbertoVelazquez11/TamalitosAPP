@@ -38,6 +38,17 @@ const DETALLE = {
   subtotalLinea: 120,
 };
 
+test('una venta sin estado se marca como cobrada, que es lo que usa la app', () => {
+  const [fila] = filasDeVentas([{ id: 'venta_2', fecha: '2026-11-27', total: 50 }]);
+  assert.equal(fila.estado, 'cobrada');
+});
+
+test('un movimiento sin origen ni destino deja celdas vacías, no null', () => {
+  const [fila] = filasDeCaja([{ id: 'm2', tipo: 'venta', monto: 50, destino: 'caja' }]);
+  assert.equal(fila.origen, '');
+  assert.equal(fila.destino, 'caja');
+});
+
 test('cada hoja del payload tiene las mismas columnas que la plantilla', () => {
   const esperado = {
     Ventas: 13, Ventas_Lineas: 8, Productos: 7, Insumos: 5, Costos: 9, Producciones: 7,

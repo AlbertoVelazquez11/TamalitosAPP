@@ -83,6 +83,8 @@ function _upsertHoja(libro, nombre, filas) {
   const hoja = libro.getSheetByName(nombre);
   if (!hoja) throw new Error(`No existe la hoja ${nombre} en la plantilla`);
 
+  _aflojarValidacion(hoja);
+
   const encabezados = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
   const ancho = encabezados.length;
 
@@ -160,6 +162,28 @@ function _libro() {
   const id = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
   if (!id) throw new Error('Falta SPREADSHEET_ID: ejecuta crearPlantilla() primero');
   return SpreadsheetApp.openById(id);
+}
+
+/**
+ * Afloja las reglas de validación antes de escribir.
+ * Las listas quedan como ayuda visual, pero un envío del script nunca debe fallar
+ * porque un valor no está en la lista (por ejemplo origen/destino vacíos en caja).
+ */
+function _aflojarValidacion(hoja) {
+  const ancho = hoja.getLastColumn();
+  if (ancho < 1) return;
+  const reglas = hoja.getRange(2, 1, Math.max(hoja.getMaxRows() - 1, 1), ancho).getDataValidations();
+  let cambiado = false;
+  const nuevas = reglas.map(fila => fila.map(regla => {
+    if (regla && !regla.getAllowInvalid()) {
+      cambiado = true;
+      return regla.copy().setAllowInvalid(true).build();
+    }
+    return regla;
+  }));
+  if (cambiado) {
+    hoja.getRange(2, 1, nuevas.length, ancho).setDataValidations(nuevas);
+  }
 }
 
 function _respuesta(objeto) {

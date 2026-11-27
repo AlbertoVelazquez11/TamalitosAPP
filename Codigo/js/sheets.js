@@ -57,7 +57,7 @@ export function filasDeVentas(ventas = []) {
     subtotal:          num(v.subtotal),
     descuento:         num(v.descuento),
     total:             num(v.total),
-    estado:            texto(v.estado || 'activa'),
+    estado:            texto(v.estado || 'cobrada'),
     motivo_cancelacion: texto(v.motivoCancelacion),
     creado_en:         texto(v.creadoEn),
   }));
