@@ -47,6 +47,5 @@
         }
       ]
     }
-  ],
-  "buildCommand": "node scripts/sync-sw.js"
+  ]
 }
