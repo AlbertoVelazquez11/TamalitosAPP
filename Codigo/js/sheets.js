@@ -18,10 +18,12 @@ import { APP_VERSION } from './version.js';
 /** Mismo orden de columnas que la plantilla. No reordenar. */
 export const HOJAS = {
   Ventas: ['venta_id', 'fecha', 'hora', 'perfil', 'tipo', 'estado_pago', 'cliente',
-           'subtotal', 'descuento', 'total', 'estado', 'motivo_cancelacion', 'creado_en'],
+           'subtotal', 'descuento', 'total', 'estado', 'motivo_cancelacion',
+           'motivo_no_ingreso', 'creado_en'],
   Ventas_Lineas: ['linea_id', 'venta_id', 'fecha', 'producto_id', 'producto', 'cantidad',
                   'precio_unitario', 'subtotal_linea'],
   Productos: ['producto_id', 'nombre', 'precio', 'stock', 'activo', 'orden', 'actualizado_en'],
+  Perfiles: ['perfil_id', 'nombre', 'creado_en', 'actualizado_en'],
   Insumos: ['insumo_id', 'nombre', 'stock', 'costo_unitario', 'actualizado_en'],
   Costos: ['costo_id', 'fecha', 'categoria', 'insumo_id', 'concepto', 'monto', 'fuente',
            'cantidad', 'creado_en'],
@@ -59,6 +61,7 @@ export function filasDeVentas(ventas = []) {
     total:             num(v.total),
     estado:            texto(v.estado || 'cobrada'),
     motivo_cancelacion: texto(v.motivoCancelacion),
+    motivo_no_ingreso:  texto(v.motivoNoIngreso),
     creado_en:         texto(v.creadoEn),
   }));
 }
@@ -89,6 +92,15 @@ export function filasDeProductos(productos = []) {
     activo:        activo(p.activo),
     orden:         num(p.orden),
     actualizado_en: texto(p.actualizadoEn || p.creadoEn),
+  }));
+}
+
+export function filasDePerfiles(perfiles = []) {
+  return perfiles.map(p => ({
+    perfil_id:      texto(p.id),
+    nombre:         texto(p.nombre),
+    creado_en:      texto(p.creadoEn),
+    actualizado_en: texto(p.actualizadoEn),
   }));
 }
 
@@ -201,6 +213,7 @@ export function construirPayload(datos = {}, { dispositivo = '', version = APP_V
       Ventas:            filasDeVentas(datos.ventas),
       Ventas_Lineas:     filasDeLineas(datos.detalleVenta, datos.ventas),
       Productos:         filasDeProductos(datos.productos),
+      Perfiles:          filasDePerfiles(datos.perfiles),
       Insumos:           filasDeInsumos(datos.insumos),
       Costos:            filasDeCostos(datos.costos),
       Producciones:      filasDeProducciones(datos.producciones),

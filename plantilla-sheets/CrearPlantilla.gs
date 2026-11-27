@@ -19,7 +19,8 @@
 const HOJAS = {
   Ventas: {
     encabezados: ['venta_id', 'fecha', 'hora', 'perfil', 'tipo', 'estado_pago', 'cliente',
-                  'subtotal', 'descuento', 'total', 'estado', 'motivo_cancelacion', 'creado_en'],
+                  'subtotal', 'descuento', 'total', 'estado', 'motivo_cancelacion',
+                  'motivo_no_ingreso', 'creado_en'],
     tipos: { fecha: 'texto', hora: 'texto', subtotal: 'moneda', descuento: 'moneda', total: 'moneda' },
     validacion: { tipo: ['venta', 'noIngreso'], estado_pago: ['pagada', 'pendiente'], estado: ['cobrada', 'cancelada'] },
   },
@@ -31,6 +32,10 @@ const HOJAS = {
   Productos: {
     encabezados: ['producto_id', 'nombre', 'precio', 'stock', 'activo', 'orden', 'actualizado_en'],
     tipos: { precio: 'moneda', stock: 'numero', activo: 'entero' },
+  },
+  Perfiles: {
+    encabezados: ['perfil_id', 'nombre', 'creado_en', 'actualizado_en'],
+    tipos: {},
   },
   Insumos: {
     encabezados: ['insumo_id', 'nombre', 'stock', 'costo_unitario', 'actualizado_en'],
@@ -139,8 +144,15 @@ function _hojaDatos(libro, nombre, def) {
   const hoja = libro.getSheetByName(nombre) || libro.insertSheet(nombre);
   const ancho = def.encabezados.length;
 
-  if (hoja.getLastRow() === 0) {
+  const vacia = hoja.getLastRow() <= 1;
+  const actuales = hoja.getLastColumn() > 0
+    ? hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0].map(String)
+    : [];
+
+  if (vacia) {
     hoja.getRange(1, 1, 1, ancho).setValues([def.encabezados]);
+  } else if (actuales.join('|') !== def.encabezados.join('|')) {
+    Logger.log(`⚠ ${nombre}: los encabezados de la plantilla cambiaron pero la hoja tiene datos. No se tocó nada; revisa a mano.`);
   }
 
   const encabezado = hoja.getRange(1, 1, 1, ancho);
@@ -230,6 +242,13 @@ function _hojaTablero(libro) {
     else if (fmt === 'fecha') celda.setNumberFormat('yyyy-mm-dd');
     else celda.setNumberFormat('@');
   });
+
+  // Ventas por perfil: tabla dinámica sin mantenimiento, se expande sola.
+  const filaPerfiles = base + filas.length + 1;
+  hoja.getRange(filaPerfiles, 1).setValue('Ventas por perfil (sólo cobradas)').setFontWeight('bold');
+  hoja.getRange(filaPerfiles + 1, 1).setFormula(
+    `=IFERROR(QUERY(Ventas!D2:K, "select D, sum(J) where K = 'cobrada' group by D label sum(J) 'Total'", 0), "sin ventas")`
+  );
 
   hoja.setColumnWidth(1, 260);
   hoja.setColumnWidth(2, 220);

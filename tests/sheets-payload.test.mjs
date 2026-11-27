@@ -10,6 +10,7 @@ import {
   filasDePedidos,
   filasDePedidosLineas,
   filasDeCaja,
+  filasDePerfiles,
   construirPayload,
   validarPayload,
 } from '../Codigo/js/sheets.js';
@@ -49,10 +50,23 @@ test('un movimiento sin origen ni destino deja celdas vacías, no null', () => {
   assert.equal(fila.destino, 'caja');
 });
 
+test('el motivo de no ingreso viaja en la hoja de ventas', () => {
+  const [fila] = filasDeVentas([{ ...VENTA, tipo: 'noIngreso', motivoNoIngreso: 'Cortesía' }]);
+  assert.equal(fila.tipo, 'noIngreso');
+  assert.equal(fila.motivo_no_ingreso, 'Cortesía');
+});
+
+test('los perfiles salen como catálogo para filtrar ventas', () => {
+  const [fila] = filasDePerfiles([{ id: 'perfil_general', nombre: 'General', creadoEn: '2026-01-01T00:00:00Z' }]);
+  assert.equal(HOJAS.Perfiles[0], 'perfil_id');
+  assert.equal(fila.perfil_id, 'perfil_general');
+  assert.equal(fila.nombre, 'General');
+});
+
 test('cada hoja del payload tiene las mismas columnas que la plantilla', () => {
   const esperado = {
-    Ventas: 13, Ventas_Lineas: 8, Productos: 7, Insumos: 5, Costos: 9, Producciones: 7,
-    Clientes: 6, Pedidos: 10, Pedidos_Lineas: 7, Caja_Movimientos: 9,
+    Ventas: 14, Ventas_Lineas: 8, Productos: 7, Perfiles: 4, Insumos: 5, Costos: 9,
+    Producciones: 7, Clientes: 6, Pedidos: 10, Pedidos_Lineas: 7, Caja_Movimientos: 9,
   };
   for (const [hoja, largo] of Object.entries(esperado)) {
     assert.equal(HOJAS[hoja].length, largo, `la hoja ${hoja} cambió de ancho`);
@@ -127,6 +141,7 @@ test('el payload completo valida contra el contrato', () => {
     ventas: [VENTA],
     detalleVenta: [DETALLE],
     productos: [{ id: 'p1', nombre: 'Verde', precio: 20 }],
+    perfiles: [{ id: 'perfil_general', nombre: 'General' }],
     insumos: [{ id: 'i1', nombre: 'Masa', cantidad: 3 }],
     costos: [{ id: 'c1', fecha: '2026-11-27', monto: 100 }],
     producciones: [{ id: 'pr1', fecha: '2026-11-27', productoId: 'p1', cantidadProducida: 50 }],
