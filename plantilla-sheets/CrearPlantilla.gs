@@ -203,46 +203,65 @@ function _hojaDatos(libro, nombre, def) {
   return hoja;
 }
 
+/**
+ * Descubre con qué separador de argumentos se escribe una fórmula en este libro.
+ * Si el archivo usa punto y coma, las fórmulas con comas quedan como #ERROR!.
+ */
+function _separadorFormula(libro) {
+  const hoja = libro.getSheetByName('Tablero') || libro.insertSheet('Tablero');
+  const celda = hoja.getRange(1, 26); // Z1, fuera del tablero visible
+  celda.setFormula('=SUM(1,2)');
+  const valor = celda.getValue();
+  celda.clearContent();
+  return valor === 3 ? ',' : ';';
+}
+
 function _hojaTablero(libro) {
   const hoja = libro.getSheetByName('Tablero') || libro.insertSheet('Tablero');
   hoja.clear();
 
+  const S = _separadorFormula(libro);
+  const fx = (texto) => texto.split('{S}').join(S);
+
   hoja.getRange('A1').setValue('Tablero').setFontWeight('bold').setFontSize(14);
   hoja.getRange('A2').setValue('Se calcula solo con fórmulas sobre las hojas de datos. No escribas aquí.');
 
-  const hoyISO   = 'TEXT(TODAY(),"yyyy-mm-dd")';
-  const mesDesde = 'TEXT(EOMONTH(TODAY(),-1)+1,"yyyy-mm-dd")';
-  const mesHasta = 'TEXT(EOMONTH(TODAY(),0),"yyyy-mm-dd")';
+  const hoyISO   = 'TEXT(TODAY(){S}"yyyy-mm-dd")';
+  const mesDesde = 'TEXT(EOMONTH(TODAY(){S}-1)+1{S}"yyyy-mm-dd")';
+  const mesHasta = 'TEXT(EOMONTH(TODAY(){S}0){S}"yyyy-mm-dd")';
 
-  // [etiqueta, fórmula, formato] — el número de fila se calcula al escribir.
+  // [etiqueta, fórmula (con {S} en lugar del separador), formato]
   const filas = [
-    ['Hoy',                          `=TODAY()`, 'fecha'],
-    ['Ventas de hoy (piezas)',       `=SUMIFS(Ventas_Lineas!F:F, Ventas_Lineas!C:C, ${hoyISO})`, 'entero'],
-    ['Ingreso de hoy',               `=SUMIFS(Ventas!J:J, Ventas!B:B, ${hoyISO}, Ventas!K:K, "cobrada")`, 'moneda'],
-    // Gastos y utilidad quedan fuera a propósito: la app no registró costos completos.
+    ['Hoy',                          '=TODAY()', 'fecha'],
+    ['Ventas de hoy (piezas)',       `=SUMIFS(Ventas_Lineas!F:F{S} Ventas_Lineas!C:C{S} ${hoyISO})`, 'entero'],
+    ['Ingreso de hoy',               `=SUMIFS(Ventas!J:J{S} Ventas!B:B{S} ${hoyISO}{S} Ventas!K:K{S} "cobrada")`, 'moneda'],
     ['Nota: gastos y utilidad',      'Pendientes — la app aún no registra costos completos', 'texto'],
-    ['',                             '', 'texto'],
-    ['Ingreso del mes',              `=SUMIFS(Ventas!J:J, Ventas!B:B, ">="&${mesDesde}, Ventas!B:B, "<="&${mesHasta}, Ventas!K:K, "cobrada")`, 'moneda'],
-
+    ['Ingreso del mes',              `=SUMIFS(Ventas!J:J{S} Ventas!B:B{S} ">="&${mesDesde}{S} Ventas!B:B{S} "<="&${mesHasta}{S} Ventas!K:K{S} "cobrada")`, 'moneda'],
     ['Ticket promedio del mes',      null, 'moneda'],
-    ['',                             '', 'texto'],
-    ['Fiado pendiente',              `=SUMIFS(Ventas!J:J, Ventas!F:F, "pendiente", Ventas!K:K, "cobrada")`, 'moneda'],
-    ['Pedidos por entregar',         '=COUNTIFS(Pedidos!H:H,"solicitado")+COUNTIFS(Pedidos!H:H,"anticipo")', 'entero'],
-    ['Anticipos cobrados',           '=SUMIFS(Pedidos!F:F, Pedidos!H:H,"solicitado")+SUMIFS(Pedidos!F:F, Pedidos!H:H,"anticipo")', 'moneda'],
-    ['',                             '', 'texto'],
+    ['Fiado pendiente',              `=SUMIFS(Ventas!J:J{S} Ventas!F:F{S} "pendiente"{S} Ventas!K:K{S} "cobrada")`, 'moneda'],
+    ['Pedidos por entregar',         `=COUNTIFS(Pedidos!H:H{S}"solicitado")+COUNTIFS(Pedidos!H:H{S}"anticipo")`, 'entero'],
+    ['Anticipos cobrados',           `=SUMIFS(Pedidos!F:F{S} Pedidos!H:H{S}"solicitado")+SUMIFS(Pedidos!F:F{S} Pedidos!H:H{S}"anticipo")`, 'moneda'],
     ['Movimientos de caja registrados', '=COUNTA(Caja_Movimientos!A:A)-1', 'entero'],
-    ['Última sincronización',        '=IFERROR(VLOOKUP("ultima_sync", _Sync!A:B, 2, FALSE), "sin sincronizar")', 'texto'],
+    ['Última sincronización',        `=IFERROR(VLOOKUP("ultima_sync"{S} _Sync!A:B{S} 2{S} FALSE){S} "sin sincronizar")`, 'texto'],
   ];
 
-  const base = 4; // A4 en adelante
-  const etiquetas = filas.map(([etiqueta, formula]) => [etiqueta, formula]);
-  hoja.getRange(base, 1, filas.length, 2).setValues(etiquetas);
+  const base = 4;
+  hoja.getRange(base, 1, filas.length, 2)
+    .setValues(filas.map(([etiqueta, formula]) => [etiqueta, formula && formula.charAt(0) === '=' ? '' : (formula || '')]));
   hoja.getRange(base, 1, filas.length, 1).setFontWeight('bold');
 
-  // Las dos fórmulas derivadas se arman sabiendo su propia fila.
   const filaDe = (etiqueta) => base + filas.findIndex(f => f[0] === etiqueta);
-  hoja.getRange(filaDe('Ticket promedio del mes'), 2)
-    .setFormula(`=IFERROR(B${filaDe('Ingreso del mes')}/COUNTIFS(Ventas!B:B,">="&${mesDesde},Ventas!B:B,"<="&${mesHasta},Ventas!K:K,"cobrada"),0)`);
+
+  // Las fórmulas se escriben una por una con setFormula, ya con el separador correcto.
+  filas.forEach(([, formula], i) => {
+    if (formula && formula.charAt(0) === '=') {
+      hoja.getRange(base + i, 2).setFormula(fx(formula));
+    }
+  });
+
+  hoja.getRange(filaDe('Ticket promedio del mes'), 2).setFormula(fx(
+    `=IFERROR(B${filaDe('Ingreso del mes')}/COUNTIFS(Ventas!B:B{S}">="&${mesDesde}{S}Ventas!B:B{S}"<="&${mesHasta}{S}Ventas!K:K{S}"cobrada"){S}0)`
+  ));
 
   filas.forEach(([, , fmt], i) => {
     const celda = hoja.getRange(base + i, 2);
@@ -252,24 +271,20 @@ function _hojaTablero(libro) {
     else celda.setNumberFormat('@');
   });
 
-  // Ventas por perfil: tabla dinámica sin mantenimiento, se expande sola.
+  // Ventas por perfil: QUERY cuenta columnas desde el inicio del rango (A=perfil, G=total, H=estado).
+  // Los comandos del QUERY van con coma siempre: van dentro de una cadena, no son sintaxis de fórmula.
   const filaPerfiles = base + filas.length + 1;
   hoja.getRange(filaPerfiles, 1).setValue('Ventas por perfil (sólo cobradas)').setFontWeight('bold');
-  hoja.getRange(filaPerfiles + 1, 1).setFormula(
-    `=IFERROR(QUERY(Ventas!D2:K, "select A, sum(G) where H = 'cobrada' group by A label sum(G) 'Total'", 0), "sin ventas")`
-  );
+  hoja.getRange(filaPerfiles + 1, 1).setFormula(fx(
+    `=IFERROR(QUERY(Ventas!D2:K{S} "select A, sum(G) where H = 'cobrada' group by A label sum(G) 'Total'"{S} 0){S} "sin ventas")`
+  ));
 
-  hoja.setColumnWidth(1, 260);
+  hoja.setColumnWidth(1, 300);
   hoja.setColumnWidth(2, 220);
   hoja.setHiddenGridlines(true);
   return hoja;
 }
 
-/**
- * Revisa el Tablero y escribe en el registro qué fórmula hay en cada celda y qué valor
- * muestra. Sirve para compartir los errores sin adivinar: Ejecutar → revisarTablero →
- * Ver → Registros (Ctrl+Enter) → copiar todo.
- */
 function revisarTablero() {
   const libro = _libroParaDiagnostico();
   const hoja = libro.getSheetByName('Tablero');
