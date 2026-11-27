@@ -417,15 +417,19 @@ export function validarRespaldo(data) {
   return {
     valido: true,
     resumen: {
-      productos:     (data.productos || []).length,
-      insumos:       (data.insumos || []).length,
-      costos:        (data.costos || []).length,
-      ventas:        (data.ventas || []).length,
-      detalleVenta:  (data.detalleVenta || []).length,
-      producciones:  (data.producciones || []).length,
-      recetas:       (data.recetas || []).length,
-      perfiles:      (data.perfiles || []).length,
-      incluyeConfig: !!data._config,
+      productos:          (data.productos || []).length,
+      insumos:            (data.insumos || []).length,
+      costos:             (data.costos || []).length,
+      ventas:             (data.ventas || []).length,
+      detalleVenta:       (data.detalleVenta || []).length,
+      producciones:       (data.producciones || []).length,
+      recetas:            (data.recetas || []).length,
+      perfiles:           (data.perfiles || []).length,
+      finanzas:           (data.finanzas || []).length,
+      movimientosFinanzas:(data.movimientosFinanzas || []).length,
+      clientes:           (data.clientes || []).length,
+      pedidos:            (data.pedidos || []).length,
+      incluyeConfig:      !!data._config,
     },
   };
 }

@@ -1,6 +1,6 @@
 /**
- * deploy.js — Script automatizado de despliegue a Vercel
- * Ejecutar con: node deploy.js
+ * deploy.cjs — Script automatizado de despliegue a Vercel
+ * Ejecutar con: node deploy.cjs
  */
 const fs = require('fs');
 const path = require('path');

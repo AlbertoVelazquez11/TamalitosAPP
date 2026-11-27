@@ -121,7 +121,7 @@ Se verificó contra el árbol real de `Codigo/`:
 
 ## 5.9 — Despliegue v1.0.0 en Vercel
 
-Ejecutar `node deploy.js` (usa la sesión CLI de Vercel y, como fallback, el token de `auth.json`).
+Ejecutar `node deploy.cjs` (usa la sesión CLI de Vercel y, como fallback, el token de `auth.json`).
 
 ---
 

@@ -91,7 +91,7 @@ export default {
 // AUTH
 // ══════════════════════════════════════════════════════════
 
-function checkAuth(request, env) {
+export function checkAuth(request, env) {
   const apiKey = env.API_KEY;
   if (!apiKey) return true; // sin clave configurada → endpoint abierto (pruebas)
   const provided = request.headers.get('X-API-Key') || '';
