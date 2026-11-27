@@ -1,21 +1,52 @@
 {
   "rewrites": [
-    { "source": "/sw.js",           "destination": "/Codigo/sw.js" },
-    { "source": "/manifest.json",   "destination": "/Codigo/manifest.json" },
-    { "source": "/css/(.*)",        "destination": "/Codigo/css/$1" },
-    { "source": "/js/(.*)",         "destination": "/Codigo/js/$1" },
-    { "source": "/apple-touch-icon(.*)", "destination": "/Codigo/icons/apple-touch-icon.png" },
-    { "source": "/favicon.ico",          "destination": "/Codigo/icons/favicon.ico" },
-    { "source": "/icons/(.*)",           "destination": "/Codigo/icons/$1" },
-    { "source": "/(.*)",                 "destination": "/Codigo/index.html" }
+    {
+      "source": "/sw.js",
+      "destination": "/Codigo/sw.js"
+    },
+    {
+      "source": "/manifest.json",
+      "destination": "/Codigo/manifest.json"
+    },
+    {
+      "source": "/css/(.*)",
+      "destination": "/Codigo/css/$1"
+    },
+    {
+      "source": "/js/(.*)",
+      "destination": "/Codigo/js/$1"
+    },
+    {
+      "source": "/apple-touch-icon(.*)",
+      "destination": "/Codigo/icons/apple-touch-icon.png"
+    },
+    {
+      "source": "/favicon.ico",
+      "destination": "/Codigo/icons/favicon.ico"
+    },
+    {
+      "source": "/icons/(.*)",
+      "destination": "/Codigo/icons/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/Codigo/index.html"
+    }
   ],
   "headers": [
     {
       "source": "/sw.js",
       "headers": [
-        { "key": "Cache-Control", "value": "no-cache" },
-        { "key": "Service-Worker-Allowed", "value": "/" }
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        }
       ]
     }
-  ]
+  ],
+  "buildCommand": "node scripts/sync-sw.js"
 }
