@@ -2,13 +2,13 @@
  * schema.js — Nombre/versión de la base, apertura de la conexión y migraciones de IndexedDB.
  *
  * Parte del módulo db (ver db.js, que reexporta la API pública).
- * Versión de esquema: 8
+ * Versión de esquema: 9
  * Object Stores: productos, insumos, costos, ventas, detalleVenta, producciones,
  *                recetas, perfiles, finanzas, movimientosFinanzas, clientes, pedidos
  */
 
 const DB_NAME    = 'TamalitosAPP';
-const DB_VERSION = 8;
+const DB_VERSION = 9;
 
 // Singleton de la conexión a la base de datos
 let _db = null;
@@ -171,6 +171,11 @@ function _crearEsquema(db, oldVersion, tx) {
     _migrarV8(tx);
   }
 
+  // Migración v8 → v9: homologar insumos (fuera inventario y costo unitario)
+  if (oldVersion < 9 && tx) {
+    _migrarV9(tx);
+  }
+
   console.log('[DB] Esquema creado/actualizado correctamente.');
 }
 
@@ -185,6 +190,29 @@ function _migrarV8(tx) {
     store.createIndex('cicloInicio', 'cicloInicio', { unique: false });
     store.createIndex('insumoId',    'insumoId',    { unique: false });
   }
+}
+
+/**
+ * Migración v8 → v9:
+ *  - Quita `cantidad` y `costoUnitario` de los insumos: ya nadie los lee y sólo
+ *    ensuciaban el respaldo y la hoja de cálculo. El precio por ciclo vive en
+ *    comprasInsumos y no se toca.
+ */
+function _migrarV9(tx) {
+  const store = tx.objectStore('insumos');
+  const req = store.openCursor();
+  req.onsuccess = () => {
+    const cursor = req.result;
+    if (!cursor) return;
+    const insumo = cursor.value;
+    if ('cantidad' in insumo || 'costoUnitario' in insumo) {
+      delete insumo.cantidad;
+      delete insumo.costoUnitario;
+      delete insumo.actualizadoEn;
+      cursor.update(insumo);
+    }
+    cursor.continue();
+  };
 }
 
 /**

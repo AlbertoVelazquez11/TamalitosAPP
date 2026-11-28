@@ -11,7 +11,7 @@ import { getAll, getById, put, clearStore } from './core.js';
  * @returns {Promise<Object>}
  */
 export async function exportarTodo() {
-  const [productos, insumos, costos, ventas, detalleVenta, producciones, recetas, perfiles, finanzas, movimientosFinanzas, clientes, pedidos] = await Promise.all([
+  const [productos, insumos, costos, ventas, detalleVenta, producciones, recetas, perfiles, finanzas, movimientosFinanzas, clientes, pedidos, comprasInsumos] = await Promise.all([
     getAll('productos'),
     getAll('insumos'),
     getAll('costos'),
@@ -24,9 +24,10 @@ export async function exportarTodo() {
     getAll('movimientosFinanzas'),
     getAll('clientes'),
     getAll('pedidos'),
+    getAll('comprasInsumos'),
   ]);
 
-  return { productos, insumos, costos, ventas, detalleVenta, producciones, recetas, perfiles, finanzas, movimientosFinanzas, clientes, pedidos };
+  return { productos, insumos, costos, ventas, detalleVenta, producciones, recetas, perfiles, finanzas, movimientosFinanzas, clientes, pedidos, comprasInsumos };
 }
 
 /**
@@ -34,14 +35,25 @@ export async function exportarTodo() {
  * ⚠️ Destructivo: borra los datos actuales antes de importar.
  * @param {Object} respaldo — Objeto con las 5 tablas
  */
+/** Deja un insumo con la forma actual: id, nombre, unidad, descripción. */
+function _homologarInsumo(insumo) {
+  const limpio = { ...insumo };
+  delete limpio.cantidad;
+  delete limpio.costoUnitario;
+  delete limpio.actualizadoEn;
+  return limpio;
+}
+
 export async function importarRespaldo(respaldo) {
-  const stores = ['productos', 'insumos', 'costos', 'ventas', 'detalleVenta', 'producciones', 'recetas', 'perfiles', 'finanzas', 'movimientosFinanzas', 'clientes', 'pedidos'];
+  const stores = ['productos', 'insumos', 'costos', 'ventas', 'detalleVenta', 'producciones', 'recetas', 'perfiles', 'finanzas', 'movimientosFinanzas', 'clientes', 'pedidos', 'comprasInsumos'];
 
   for (const storeName of stores) {
     await clearStore(storeName);
     const registros = respaldo[storeName] || [];
     for (const record of registros) {
-      await put(storeName, record);
+      // Los respaldos viejos traen cantidad/costoUnitario en insumos: se descartan
+      // para que no vuelvan a aparecer en la hoja ni en el próximo respaldo.
+      await put(storeName, storeName === 'insumos' ? _homologarInsumo(record) : record);
     }
   }
 

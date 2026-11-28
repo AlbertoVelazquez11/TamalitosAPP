@@ -19,16 +19,18 @@ function sembrarBaseV5() {
       db.createObjectStore('clientes', { keyPath: 'id' });
       db.createObjectStore('pedidos', { keyPath: 'id' });
       db.createObjectStore('costos', { keyPath: 'id' }).createIndex('fecha', 'fecha');
+      db.createObjectStore('insumos', { keyPath: 'id' });
     };
     req.onerror = () => reject(req.error);
     req.onsuccess = () => {
       const db = req.result;
-      const tx = db.transaction(['clientes', 'pedidos', 'costos'], 'readwrite');
+      const tx = db.transaction(['clientes', 'pedidos', 'costos', 'insumos'], 'readwrite');
       tx.objectStore('clientes').put({ id: 'cli_1', nombre: 'Ana' });
       tx.objectStore('clientes').put({ id: 'cli_2', nombre: 'Beto' });
       tx.objectStore('pedidos').put({ id: 'ped_1', clienteId: 'cli_1', fechaEntrega: '2026-12-01', estado: 'pendiente' });
       tx.objectStore('pedidos').put({ id: 'ped_2', clienteId: 'cli_2', fechaEntrega: '2026-12-05', estado: 'entregado' });
       tx.objectStore('costos').put({ id: 'cos_1', fecha: '2026-11-27', concepto: 'Gas', monto: 90, fuente: 'caja' });
+      tx.objectStore('insumos').put({ id: 'ins_1', nombre: 'Maseca', unidad: 'kg', cantidad: 9, costoUnitario: 22 });
       tx.oncomplete = () => { db.close(); resolve(); };
       tx.onerror = () => reject(tx.error);
     };
@@ -53,7 +55,7 @@ test('abrir con la app nueva migra a la última versión conservando los datos',
   const mod = await import('../Codigo/js/db.js');
   const db = await mod.openDB();
 
-  assert.equal(db.version, 8, 'DB_VERSION debe subir a 8');
+  assert.equal(db.version, 9, 'DB_VERSION debe subir a 9');
 
   const clientes = await mod.getAll('clientes');
   assert.equal(clientes.length, 2, 'no se deben perder clientes en la migración');
@@ -100,6 +102,18 @@ test('la bitácora de insumos por ciclo se crea con sus índices al migrar', asy
   const store = tx.objectStore('comprasInsumos');
   assert.ok(store.indexNames.contains('cicloInicio'));
   assert.ok(store.indexNames.contains('insumoId'));
+});
+
+test('los insumos viejos se homologan: sin inventario ni costo unitario', async () => {
+  const mod = await import('../Codigo/js/db.js');
+  await mod.openDB();
+
+  const insumos = await mod.getAll('insumos');
+  assert.equal(insumos.length, 1, 'no se debe perder ningún insumo');
+  assert.equal(insumos[0].nombre, 'Maseca');
+  assert.equal(insumos[0].unidad, 'kg');
+  assert.equal('cantidad' in insumos[0], false);
+  assert.equal('costoUnitario' in insumos[0], false);
 });
 
 test('los stores que no existían se crean completos en la base migrada', async () => {

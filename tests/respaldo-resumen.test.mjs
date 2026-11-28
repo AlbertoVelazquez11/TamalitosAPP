@@ -16,6 +16,7 @@ const TABLAS = [
   'movimientosFinanzas',
   'clientes',
   'pedidos',
+  'comprasInsumos',
 ];
 
 function respaldoCompleto() {
@@ -33,7 +34,7 @@ test('un respaldo completo es válido', () => {
   assert.equal(r.error, undefined);
 });
 
-test('el resumen reporta las doce tablas con su conteo', () => {
+test('el resumen reporta todas las tablas con su conteo', () => {
   const { resumen } = validarRespaldo(respaldoCompleto());
   TABLAS.forEach((tabla, i) => {
     assert.equal(resumen[tabla], i + 1, `falta o está mal el conteo de ${tabla}`);
