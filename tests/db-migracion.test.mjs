@@ -18,15 +18,17 @@ function sembrarBaseV5() {
       db.createObjectStore('ventas', { keyPath: 'id' }).createIndex('fecha', 'fecha');
       db.createObjectStore('clientes', { keyPath: 'id' });
       db.createObjectStore('pedidos', { keyPath: 'id' });
+      db.createObjectStore('costos', { keyPath: 'id' }).createIndex('fecha', 'fecha');
     };
     req.onerror = () => reject(req.error);
     req.onsuccess = () => {
       const db = req.result;
-      const tx = db.transaction(['clientes', 'pedidos'], 'readwrite');
+      const tx = db.transaction(['clientes', 'pedidos', 'costos'], 'readwrite');
       tx.objectStore('clientes').put({ id: 'cli_1', nombre: 'Ana' });
       tx.objectStore('clientes').put({ id: 'cli_2', nombre: 'Beto' });
       tx.objectStore('pedidos').put({ id: 'ped_1', clienteId: 'cli_1', fechaEntrega: '2026-12-01', estado: 'pendiente' });
       tx.objectStore('pedidos').put({ id: 'ped_2', clienteId: 'cli_2', fechaEntrega: '2026-12-05', estado: 'entregado' });
+      tx.objectStore('costos').put({ id: 'cos_1', fecha: '2026-11-27', concepto: 'Gas', monto: 90, fuente: 'caja' });
       tx.oncomplete = () => { db.close(); resolve(); };
       tx.onerror = () => reject(tx.error);
     };
@@ -51,7 +53,7 @@ test('abrir con la app nueva migra a la versión 6 conservando los datos', async
   const mod = await import('../Codigo/js/db.js');
   const db = await mod.openDB();
 
-  assert.equal(db.version, 6, 'DB_VERSION debe subir a 6');
+  assert.equal(db.version, 7, 'DB_VERSION debe subir a 7');
 
   const clientes = await mod.getAll('clientes');
   assert.equal(clientes.length, 2, 'no se deben perder clientes en la migración');
@@ -74,6 +76,19 @@ test('los índices nuevos existen y sirven para consultar', async () => {
   const porNombre = await mod.getAll('clientes', 'nombre', 'Beto');
   assert.equal(porNombre.length, 1);
   assert.equal(porNombre[0].id, 'cli_2');
+});
+
+test('los costos viejos quedan como gasto general y con índice por producto', async () => {
+  const mod = await import('../Codigo/js/db.js');
+  const db = await mod.openDB();
+
+  const tx = db.transaction('costos', 'readonly');
+  assert.ok(tx.objectStore('costos').indexNames.contains('productoId'));
+
+  const costos = await mod.getAll('costos');
+  assert.equal(costos.length, 1, 'no se debe perder ningún costo');
+  assert.equal(costos[0].alcance, 'general');
+  assert.equal(costos[0].productoId ?? null, null);
 });
 
 test('los stores que no existían se crean completos en la base migrada', async () => {

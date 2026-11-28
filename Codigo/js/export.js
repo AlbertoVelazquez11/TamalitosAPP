@@ -18,6 +18,7 @@ import {
 } from './db.js';
 import { store, importarConfig, getDeviceId } from './store.js';
 import { hoy } from './utils.js';
+import { rangoCicloActual } from './utilidad.js';
 import { APP_VERSION } from './version.js';
 
 const BOM = '\uFEFF'; // BOM UTF-8 para compatibilidad con Excel/Numbers
@@ -57,8 +58,10 @@ export function rangoDePeriodo(periodo) {
     }
     case 'anio':
       return { inicio: `${now.getFullYear()}-01-01`, fin };
-    case 'findesemana': {
-      return { inicio: _aISO(_ultimoViernes(now)), fin };
+    case 'findesemana':
+    case 'ciclo': {
+      // Un solo criterio de ciclo (viernes a hoy) para todo el app: ver utilidad.js.
+      return rangoCicloActual(fin);
     }
     case '4semanas': {
       const v = _ultimoViernes(now);

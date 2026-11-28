@@ -2,13 +2,13 @@
  * schema.js — Nombre/versión de la base, apertura de la conexión y migraciones de IndexedDB.
  *
  * Parte del módulo db (ver db.js, que reexporta la API pública).
- * Versión de esquema: 6
+ * Versión de esquema: 7
  * Object Stores: productos, insumos, costos, ventas, detalleVenta, producciones,
  *                recetas, perfiles, finanzas, movimientosFinanzas, clientes, pedidos
  */
 
 const DB_NAME    = 'TamalitosAPP';
-const DB_VERSION = 6;
+const DB_VERSION = 7;
 
 // Singleton de la conexión a la base de datos
 let _db = null;
@@ -74,6 +74,7 @@ function _crearEsquema(db, oldVersion, tx) {
     store.createIndex('fecha',     'fecha',     { unique: false });
     store.createIndex('categoria', 'categoria', { unique: false });
     store.createIndex('insumoId',  'insumoId',  { unique: false });
+    store.createIndex('productoId','productoId',{ unique: false });
   }
 
   // ── Ventas (cabecera de transacción) ──────────────────────
@@ -152,7 +153,36 @@ function _crearEsquema(db, oldVersion, tx) {
     _migrarV6(tx);
   }
 
+  // Migración v6 → v7: costos relacionados con un producto
+  if (oldVersion < 7 && tx) {
+    _migrarV7(tx);
+  }
+
   console.log('[DB] Esquema creado/actualizado correctamente.');
+}
+
+/**
+ * Migración v6 → v7:
+ *  - Índice para relacionar un costo con un producto (utilidad del ciclo).
+ *  - Los costos que ya existen quedan como gasto general.
+ */
+function _migrarV7(tx) {
+  const costos = tx.objectStore('costos');
+  if (!costos.indexNames.contains('productoId')) {
+    costos.createIndex('productoId', 'productoId', { unique: false });
+  }
+  const req = costos.openCursor();
+  req.onsuccess = () => {
+    const cursor = req.result;
+    if (cursor) {
+      const costo = cursor.value;
+      if (costo.alcance === undefined) {
+        costo.alcance = costo.productoId ? 'producto' : 'general';
+        cursor.update(costo);
+      }
+      cursor.continue();
+    }
+  };
 }
 
 /**

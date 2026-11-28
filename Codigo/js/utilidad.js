@@ -43,7 +43,16 @@ export function inicioDeCiclo(fechaISO = hoy()) {
   return _iso(inicio);
 }
 
-/** Rango del ciclo que contiene la fecha: viernes (inicio) a jueves (fin), ambos incluidos. */
+/**
+ * Rango del ciclo en curso: del viernes de esta semana hasta HOY.
+ * Es el que usan el Dashboard y el saldo del Historial, para que los dos muestren lo mismo.
+ */
+export function rangoCicloActual(fechaISO = hoy()) {
+  const f = String(fechaISO);
+  return { inicio: inicioDeCiclo(f), fin: f };
+}
+
+/** Rango del ciclo completo: viernes (inicio) a jueves (fin), ambos incluidos. */
 export function rangoCiclo(fechaISO = hoy()) {
   const inicio = inicioDeCiclo(fechaISO);
   const fin = new Date(_fecha(inicio).getTime() + 6 * MS_DIA);

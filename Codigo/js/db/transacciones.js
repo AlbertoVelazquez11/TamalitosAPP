@@ -67,9 +67,10 @@ export async function guardarVentaCompleta(venta, detalles) {
  * @param {string} produccion.productoId
  * @param {string} produccion.nombreProducto
  * @param {number} produccion.cantidadProducida
+ * @param {number} [produccion.costoTotal] — costo total manual de esta producción
  * @returns {Promise<string>} — id de la producción creada
  */
-export async function guardarProduccion({ productoId, nombreProducto, cantidadProducida }) {
+export async function guardarProduccion({ productoId, nombreProducto, cantidadProducida, costoTotal = 0 }) {
   const db = await openDB();
 
   return new Promise((resolve, reject) => {
@@ -97,7 +98,7 @@ export async function guardarProduccion({ productoId, nombreProducto, cantidadPr
       nombreProducto,
       cantidadProducida,
       insumosUsados: [],
-      costoTotal: 0,
+      costoTotal: Number(costoTotal) > 0 ? Number(costoTotal) : 0,
       fecha:     hoy(),
       creadoEn:  ahora.toISOString(),
     });

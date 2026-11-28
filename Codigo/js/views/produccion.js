@@ -104,6 +104,15 @@ async function _renderFormulario(container) {
         <input id="prod-cantidad" type="number" class="form-input"
                placeholder="1" min="1" step="1" inputmode="numeric">
       </div>
+      <div class="form-group" style="margin-top: var(--space-3);">
+        <label class="form-label" for="prod-costo">Costo total de esta producción</label>
+        <input id="prod-costo" type="number" class="form-input"
+               placeholder="0.00" min="0" step="0.01" inputmode="decimal">
+        <p class="text-sm text-muted" style="margin-top: var(--space-1);">
+          Lo que gastaste en total para producir esto. Sin insumos ni recetas: sólo el monto.
+          No mueve la caja; sirve para calcular la utilidad del ciclo.
+        </p>
+      </div>
     </div>
 
     <button class="btn btn-primary btn-block" id="btn-confirmar-produccion"
@@ -123,6 +132,7 @@ async function _renderFormulario(container) {
 async function _confirmarProduccion(container, productos) {
   const productoId        = container.querySelector('#prod-producto')?.value;
   const cantidadProducida = Number(container.querySelector('#prod-cantidad')?.value);
+  const costoTotal        = Number(container.querySelector('#prod-costo')?.value) || 0;
 
   if (!productoId) {
     toast.error('Selecciona el producto.');
@@ -130,6 +140,10 @@ async function _confirmarProduccion(container, productos) {
   }
   if (!Number.isInteger(cantidadProducida) || cantidadProducida <= 0) {
     toast.error('La cantidad producida debe ser un entero mayor a 0.');
+    return;
+  }
+  if (!Number.isFinite(costoTotal) || costoTotal < 0) {
+    toast.error('El costo de producción debe ser cero o mayor.');
     return;
   }
 
@@ -140,6 +154,7 @@ async function _confirmarProduccion(container, productos) {
       productoId,
       nombreProducto: producto?.nombre ?? '',
       cantidadProducida,
+      costoTotal,
     });
     toast.success(`Producción registrada: ${cantidadProducida} × ${producto?.nombre ?? ''}`);
     navegar('insumos-costos'); // volver al menú anterior

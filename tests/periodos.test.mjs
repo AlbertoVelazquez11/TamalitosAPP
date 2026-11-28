@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { rangoDePeriodo } from '../Codigo/js/export.js';
+import { rangoCicloActual } from '../Codigo/js/utilidad.js';
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -80,4 +81,13 @@ test('4semanas arranca 21 días antes del viernes más reciente', () => {
   const [y, m, d] = inicio.split('-').map(Number);
   assert.equal(new Date(y, m - 1, d).getDay(), 5);
   assert.ok(inicio <= fin);
+});
+
+test('el periodo del ciclo (findesemana) usa la misma regla que el saldo', () => {
+  assert.deepEqual(rangoDePeriodo('findesemana'), rangoCicloActual(hoyISO));
+  assert.deepEqual(rangoDePeriodo('ciclo'), rangoCicloActual(hoyISO));
+  const { inicio, fin } = rangoDePeriodo('ciclo');
+  const [y, m, d] = inicio.split('-').map(Number);
+  assert.equal(new Date(y, m - 1, d).getDay(), 5, 'el ciclo debe empezar en viernes');
+  assert.equal(fin, hoyISO, 'el ciclo en curso termina hoy');
 });

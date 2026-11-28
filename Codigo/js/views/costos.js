@@ -24,6 +24,10 @@ export async function render(container) {
   const insumos = await getAll('insumos');
   insumos.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
 
+  // Productos para relacionar el gasto con uno en concreto (o dejarlo general).
+  const productos = await getAll('productos');
+  productos.sort((a, b) => String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'));
+
   container.innerHTML = `
     <div class="view">
       <div class="view-header">
@@ -52,6 +56,17 @@ export async function render(container) {
           <label class="form-label" for="c-cantidad">Cantidad</label>
           <input id="c-cantidad" type="number" class="form-input"
                  placeholder="0.0" min="0" step="0.1" inputmode="decimal" autocomplete="off">
+        </div>
+
+        <div class="form-group" style="margin-top: var(--space-3);">
+          <label class="form-label" for="c-producto">¿De qué es este gasto?</label>
+          <select id="c-producto" class="form-select">
+            <option value="">🏠 Gasto general del negocio</option>
+            ${productos.map(p => `<option value="${esc(p.id)}">${esc(p.nombre)}</option>`).join('')}
+          </select>
+          <p class="text-sm text-muted" style="margin-top: var(--space-1);">
+            Si lo relacionas con un producto, cuenta como inversión de ese producto para la utilidad del ciclo.
+          </p>
         </div>
 
         <div class="form-group" style="margin-top: var(--space-3);">
@@ -140,6 +155,7 @@ async function _guardarCosto(container, insumos) {
   const notas      = container.querySelector('#c-notas')?.value.trim();
   const cantidadStr = container.querySelector('#c-cantidad')?.value;
   const fuente      = container.querySelector('#c-fuente')?.value || 'caja';
+  const productoId  = container.querySelector('#c-producto')?.value || null;
 
   // Validaciones
   if (!concepto) {
@@ -180,6 +196,10 @@ async function _guardarCosto(container, insumos) {
     fuente,
     fecha,
     notas:     notas || '',
+    // Relación con producto: null = gasto general del negocio.
+    productoId:     productoId || null,
+    productoNombre: productoId ? (productos.find(p => p.id === productoId)?.nombre ?? '') : '',
+    alcance:        productoId ? 'producto' : 'general',
     creadoEn:  new Date().toISOString(),
   };
 

@@ -34,6 +34,7 @@ const ASSETS_TO_CACHE = [
   './js/db/transacciones.js',
   './js/db/backup.js',
   './js/utils.js',
+  './js/utilidad.js',
   './js/version.js',
   './js/gestures.js',
   './js/export.js',
