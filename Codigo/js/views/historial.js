@@ -7,7 +7,10 @@
  * HU-053: Cancelación de venta solo dentro de las últimas 24 h
  */
 
-import { getVentasPorFecha, getDetallesByVentaId, cancelarVenta, put, aplicarMovimiento } from '../db.js';
+import {
+  getVentasPorFecha, getDetallesByVentaId, cancelarVenta, put, aplicarMovimiento, getAll,
+} from '../db.js';
+import { cicloActual, rangoCicloActual } from '../utilidad.js';
 import { crearDateFilter } from '../components/date-filter.js';
 import { modal }           from '../components/modal.js';
 import { toast }           from '../components/toast.js';
@@ -43,6 +46,9 @@ export async function render(container) {
         <button class="btn btn-secondary btn-sm" id="btn-hoy">Hoy</button>
       </div>
 
+      <!-- Saldo del ciclo en curso (viernes a hoy) -->
+      <div id="saldo-ciclo" style="margin-bottom: var(--space-5);"></div>
+
       <!-- Resumen del día -->
       <div id="resumen-dia" class="summary-grid" style="margin-bottom: var(--space-5);"></div>
 
@@ -68,6 +74,7 @@ export async function render(container) {
   });
 
   // Carga inicial
+  await _cargarSaldoCiclo(container);
   await _cargarVentas(container);
 }
 
@@ -81,6 +88,61 @@ async function _cargarVentas(container) {
 
   await _renderResumen(container, ventas, fecha);
   await _renderLista(container, ventas, fecha);
+}
+
+/**
+ * Saldo del ciclo en curso: lo invertido (producción + costos) contra lo recuperado
+ * en ventas cobradas. Rojo mientras no se recupera, verde cuando ya es ganancia.
+ * NO es la caja: es margen.
+ */
+async function _cargarSaldoCiclo(container) {
+  const el = container.querySelector('#saldo-ciclo');
+  if (!el) return;
+
+  try {
+    const [ventas, detalleVenta, producciones, costos] = await Promise.all([
+      getAll('ventas'), getAll('detalleVenta'), getAll('producciones'), getAll('costos'),
+    ]);
+
+    const ciclo = cicloActual({ ventas, detalleVenta, producciones, costos });
+    const { inicio, fin } = rangoCicloActual();
+    const positivo = ciclo.saldo >= 0;
+    const color = positivo ? 'var(--color-success, #15803d)' : 'var(--color-danger, #b91c1c)';
+    const fondo = positivo ? 'rgba(21,128,61,.08)' : 'rgba(185,28,28,.08)';
+    const signo = positivo ? '+' : '−';
+    const etiqueta = positivo ? 'Ganancia del ciclo' : 'Aún no se recupera';
+    const pct = ciclo.invertido > 0
+      ? `${Math.round(Math.min(ciclo.recuperadoPct, 9.99) * 100)}% recuperado`
+      : 'sin inversión registrada';
+
+    const productos = ciclo.productos.slice(0, 5).map(p => `
+      <div style="display:flex; justify-content:space-between; gap:var(--space-3); padding:2px 0;">
+        <span class="text-sm">${esc(p.nombre || p.productoId)}</span>
+        <span class="text-sm" style="font-variant-numeric: tabular-nums; color:${p.saldo >= 0 ? 'inherit' : color};">
+          ${p.saldo >= 0 ? '+' : '−'}${formatMXN(Math.abs(p.saldo))}
+        </span>
+      </div>`).join('');
+
+    el.innerHTML = `
+      <div class="card" style="border-left: 4px solid ${color}; background: ${fondo};">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; gap:var(--space-2);">
+          <span class="text-sm text-muted">Ciclo actual · ${esc(formatFecha(inicio))} → ${esc(formatFecha(fin))}</span>
+          <span class="text-sm text-muted">${esc(pct)}</span>
+        </div>
+        <div style="font-size: 1.6rem; font-weight: 700; color:${color}; font-variant-numeric: tabular-nums; margin-top: var(--space-1);">
+          ${signo}${formatMXN(Math.abs(ciclo.saldo))}
+        </div>
+        <div class="text-sm" style="color:${color}; font-weight: 600;">${etiqueta}</div>
+        <div class="text-sm text-muted" style="margin-top: var(--space-2);">
+          Invertido ${formatMXN(ciclo.invertido)} · Recuperado ${formatMXN(ciclo.recuperado)} · ${ciclo.ventas} ventas cobradas
+        </div>
+        ${productos ? `<div style="margin-top: var(--space-3); border-top: 1px solid rgba(0,0,0,.08); padding-top: var(--space-2);">${productos}</div>` : ''}
+      </div>
+    `;
+  } catch (e) {
+    console.error('[Historial] Error al calcular el saldo del ciclo:', e);
+    el.innerHTML = '';
+  }
 }
 
 async function _renderResumen(container, ventas, fecha) {

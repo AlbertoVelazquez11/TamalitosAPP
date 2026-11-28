@@ -18,10 +18,14 @@ export async function render(container) {
       </p>
 
       <div class="hub-grid">
-        <!-- Oculto temporalmente v4.0.0: Insumos y Registrar Costos -->
         <div class="hub-card" id="btn-produccion" role="button" tabindex="0">
           <div class="hub-card__icon">🏭</div>
           <div class="hub-card__title">Producción</div>
+        </div>
+        <!-- Reactivado para la utilidad del ciclo: aquí se capturan los gastos -->
+        <div class="hub-card" id="btn-costos" role="button" tabindex="0">
+          <div class="hub-card__icon">💸</div>
+          <div class="hub-card__title">Costos y gastos</div>
         </div>
         <div class="hub-card" id="btn-clientes" role="button" tabindex="0">
           <div class="hub-card__icon">👥</div>
@@ -46,6 +50,7 @@ export async function render(container) {
 
   container.querySelector('#btn-back').addEventListener('click', navegarAtras);
   container.querySelector('#btn-produccion').addEventListener('click', () => navegar('produccion'));
+  container.querySelector('#btn-costos').addEventListener('click', () => navegar('costos'));
   container.querySelector('#btn-clientes').addEventListener('click', () => navegar('clientes'));
   container.querySelector('#btn-pedidos').addEventListener('click', () => navegar('pedidos'));
   container.querySelector('#btn-perfiles').addEventListener('click', () => navegar('perfiles'));
