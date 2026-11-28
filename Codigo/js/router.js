@@ -26,6 +26,7 @@ const ROUTES = {
   'clientes':       () => import('./views/clientes.js'),
   'insumos-costos': () => import('./views/insumos-hub.js'),
   'insumos':        () => import('./views/insumos.js'),
+  'insumos-ciclo':  () => import('./views/insumos-ciclo.js'),
   'costos':         () => import('./views/costos.js'),
   'produccion':     () => import('./views/produccion.js'),
   'recetas':        () => import('./views/recetas.js'),

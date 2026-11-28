@@ -49,11 +49,11 @@ test('la base sembrada está en la versión 5 sin los índices nuevos', async ()
   db.close();
 });
 
-test('abrir con la app nueva migra a la versión 6 conservando los datos', async () => {
+test('abrir con la app nueva migra a la última versión conservando los datos', async () => {
   const mod = await import('../Codigo/js/db.js');
   const db = await mod.openDB();
 
-  assert.equal(db.version, 7, 'DB_VERSION debe subir a 7');
+  assert.equal(db.version, 8, 'DB_VERSION debe subir a 8');
 
   const clientes = await mod.getAll('clientes');
   assert.equal(clientes.length, 2, 'no se deben perder clientes en la migración');
@@ -89,6 +89,17 @@ test('los costos viejos quedan como gasto general y con índice por producto', a
   assert.equal(costos.length, 1, 'no se debe perder ningún costo');
   assert.equal(costos[0].alcance, 'general');
   assert.equal(costos[0].productoId ?? null, null);
+});
+
+test('la bitácora de insumos por ciclo se crea con sus índices al migrar', async () => {
+  const mod = await import('../Codigo/js/db.js');
+  const db = await mod.openDB();
+
+  assert.ok(Array.from(db.objectStoreNames).includes('comprasInsumos'));
+  const tx = db.transaction('comprasInsumos', 'readonly');
+  const store = tx.objectStore('comprasInsumos');
+  assert.ok(store.indexNames.contains('cicloInicio'));
+  assert.ok(store.indexNames.contains('insumoId'));
 });
 
 test('los stores que no existían se crean completos en la base migrada', async () => {

@@ -2,13 +2,13 @@
  * schema.js — Nombre/versión de la base, apertura de la conexión y migraciones de IndexedDB.
  *
  * Parte del módulo db (ver db.js, que reexporta la API pública).
- * Versión de esquema: 7
+ * Versión de esquema: 8
  * Object Stores: productos, insumos, costos, ventas, detalleVenta, producciones,
  *                recetas, perfiles, finanzas, movimientosFinanzas, clientes, pedidos
  */
 
 const DB_NAME    = 'TamalitosAPP';
-const DB_VERSION = 7;
+const DB_VERSION = 8;
 
 // Singleton de la conexión a la base de datos
 let _db = null;
@@ -138,6 +138,14 @@ function _crearEsquema(db, oldVersion, tx) {
     store.createIndex('fechaEntrega', 'fechaEntrega', { unique: false });
   }
 
+  // ── Compras de insumos por ciclo (bitácora, no costo) ───────
+  // { id, insumoId, nombre, cantidad, unidad, precioUnitario, total, nota, cicloInicio, cicloFin, creadoEn }
+  if (!db.objectStoreNames.contains('comprasInsumos')) {
+    const store = db.createObjectStore('comprasInsumos', { keyPath: 'id' });
+    store.createIndex('cicloInicio', 'cicloInicio', { unique: false });
+    store.createIndex('insumoId',    'insumoId',    { unique: false });
+  }
+
   // Migración v2 → v3: perfil "General" + backfill de ventas
   if (oldVersion < 3 && tx) {
     _migrarV3(tx);
@@ -158,7 +166,25 @@ function _crearEsquema(db, oldVersion, tx) {
     _migrarV7(tx);
   }
 
+  // Migración v7 → v8: bitácora de compras de insumos por ciclo
+  if (oldVersion < 8 && tx) {
+    _migrarV8(tx);
+  }
+
   console.log('[DB] Esquema creado/actualizado correctamente.');
+}
+
+/**
+ * Migración v7 → v8: crea el store de compras de insumos en bases que ya existían.
+ * No hay datos previos que convertir: el catálogo de insumos no se toca.
+ */
+function _migrarV8(tx) {
+  const db = tx.db;
+  if (!db.objectStoreNames.contains('comprasInsumos')) {
+    const store = db.createObjectStore('comprasInsumos', { keyPath: 'id' });
+    store.createIndex('cicloInicio', 'cicloInicio', { unique: false });
+    store.createIndex('insumoId',    'insumoId',    { unique: false });
+  }
 }
 
 /**
