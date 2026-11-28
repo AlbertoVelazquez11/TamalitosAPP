@@ -20,10 +20,6 @@ import { navegarAtras } from '../router.js';
 import { icon } from '../components/icons.js';
 
 export async function render(container) {
-  // Cargar insumos para el selector
-  const insumos = await getAll('insumos');
-  insumos.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
-
   // Productos para relacionar el gasto con uno en concreto (o dejarlo general).
   const productos = await getAll('productos');
   productos.sort((a, b) => String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'));
@@ -37,27 +33,6 @@ export async function render(container) {
 
       <!-- Formulario de registro de gasto -->
       <div class="card" style="margin-bottom: var(--space-5);">
-        <div class="form-group">
-          <label class="form-label" for="c-insumo">Insumo <span class="text-muted">(opcional)</span></label>
-          <select id="c-insumo" class="form-select">
-            <option value="">— Sin insumo —</option>
-            ${insumos.map(i => `<option value="${esc(i.id)}">${esc(i.nombre)}${i.unidad ? ' (' + esc(i.unidad) + ')' : ''}</option>`).join('')}
-          </select>
-        </div>
-
-        <div class="form-group" style="margin-top: var(--space-3);">
-          <label class="form-label" for="c-concepto">Concepto *</label>
-          <input id="c-concepto" type="text" class="form-input"
-                 placeholder="Ej. Masa de maíz, Gas LP, Servicio de luz…"
-                 maxlength="80" autocomplete="off">
-        </div>
-
-        <div class="form-group" id="c-cantidad-group" style="display:none; margin-top: var(--space-3);">
-          <label class="form-label" for="c-cantidad">Cantidad</label>
-          <input id="c-cantidad" type="number" class="form-input"
-                 placeholder="0.0" min="0" step="0.1" inputmode="decimal" autocomplete="off">
-        </div>
-
         <div class="form-group" style="margin-top: var(--space-3);">
           <label class="form-label" for="c-producto">¿De qué es este gasto?</label>
           <select id="c-producto" class="form-select">
@@ -70,28 +45,10 @@ export async function render(container) {
         </div>
 
         <div class="form-group" style="margin-top: var(--space-3);">
-          <label class="form-label" for="c-categoria">Categoría</label>
-          <select id="c-categoria" class="form-select">
-            <option value="Insumo">🛒 Insumo / Materia prima</option>
-            <option value="Servicio">🔧 Servicio (luz, gas, agua…)</option>
-            <option value="Operativo">📦 Gasto Operativo</option>
-            <option value="Otro">📝 Otro</option>
-          </select>
-        </div>
-
-        <div class="form-group" style="margin-top: var(--space-3);">
           <label class="form-label" for="c-monto">Monto (MXN) *</label>
           <input id="c-monto" type="number" class="form-input"
                  placeholder="0.00" min="0.01" step="0.50"
                  inputmode="decimal" autocomplete="off">
-        </div>
-
-        <div class="form-group" style="margin-top: var(--space-3);">
-          <label class="form-label" for="c-fuente">Fuente del dinero</label>
-          <select id="c-fuente" class="form-select">
-            <option value="caja" selected>💵 Caja</option>
-            <option value="fondo">🏦 Fondo</option>
-          </select>
         </div>
 
         <div class="form-group" style="margin-top: var(--space-3);">
@@ -117,25 +74,8 @@ export async function render(container) {
     </div>
   `;
 
-  // Selector de insumo → mostrar/ocultar cantidad y autocompletar
-  const insumoSelect  = container.querySelector('#c-insumo');
-  const conceptoInput = container.querySelector('#c-concepto');
-  const categoriaSel  = container.querySelector('#c-categoria');
-  const cantidadGroup = container.querySelector('#c-cantidad-group');
-
-  insumoSelect.addEventListener('change', () => {
-    const insumo = insumos.find(i => i.id === insumoSelect.value);
-    if (insumo) {
-      conceptoInput.value = insumo.nombre;
-      categoriaSel.value  = 'Insumo';
-      cantidadGroup.style.display = '';
-    } else {
-      cantidadGroup.style.display = 'none';
-    }
-  });
-
   container.querySelector('#btn-back').addEventListener('click', navegarAtras);
-  container.querySelector('#btn-guardar-costo').addEventListener('click', () => _guardarCosto(container, insumos));
+  container.querySelector('#btn-guardar-costo').addEventListener('click', () => _guardarCosto(container));
 
   await _renderHistorial(container);
 
@@ -146,23 +86,14 @@ export async function render(container) {
 // GUARDAR COSTO
 // ══════════════════════════════════════════════════════════
 
-async function _guardarCosto(container, insumos) {
-  const insumoId   = container.querySelector('#c-insumo')?.value;
-  const concepto   = container.querySelector('#c-concepto')?.value.trim();
-  const categoria  = container.querySelector('#c-categoria')?.value;
+async function _guardarCosto(container) {
   const montoStr   = container.querySelector('#c-monto')?.value;
   const fecha      = container.querySelector('#c-fecha')?.value;
   const notas      = container.querySelector('#c-notas')?.value.trim();
-  const cantidadStr = container.querySelector('#c-cantidad')?.value;
-  const fuente      = container.querySelector('#c-fuente')?.value || 'caja';
-  const productoId  = container.querySelector('#c-producto')?.value || null;
+  const productoId = container.querySelector('#c-producto')?.value || null;
 
-  // Validaciones
-  if (!concepto) {
-    toast.error('El concepto es obligatorio.');
-    container.querySelector('#c-concepto')?.focus();
-    return;
-  }
+  // La caja sigue siendo la fuente por defecto: se mantiene el comportamiento previo.
+  const fuente = 'caja';
 
   const monto = parseFloat(montoStr);
   if (!monto || monto <= 0) {
@@ -176,41 +107,26 @@ async function _guardarCosto(container, insumos) {
     return;
   }
 
-  let cantidad = null;
-  if (insumoId) {
-    cantidad = parseFloat(cantidadStr);
-    if (!Number.isFinite(cantidad) || cantidad <= 0) {
-      toast.error('Ingresa la cantidad del insumo.');
-      container.querySelector('#c-cantidad')?.focus();
-      return;
-    }
-  }
+
+  const producto = productoId ? productos.find(p => p.id === productoId) : null;
+  const concepto = producto ? `Gasto de ${producto.nombre}` : 'Gasto general';
 
   const nuevo = {
     id:        generarId('costo'),
     concepto,
-    categoria: categoria || 'Otro',
-    insumoId:  insumoId || null,
-    cantidad,
+    categoria: 'Gasto',
+    insumoId:  null,
+    cantidad:  null,
     monto,
     fuente,
     fecha,
     notas:     notas || '',
     // Relación con producto: null = gasto general del negocio.
     productoId:     productoId || null,
-    productoNombre: productoId ? (productos.find(p => p.id === productoId)?.nombre ?? '') : '',
+    productoNombre: producto ? (producto.nombre ?? '') : '',
     alcance:        productoId ? 'producto' : 'general',
     creadoEn:  new Date().toISOString(),
   };
-
-  // Si es un insumo, aumentar su inventario
-  if (insumoId) {
-    let insumo = insumos.find(i => i.id === insumoId);
-    if (!insumo) insumo = await getById('insumos', insumoId);
-    if (insumo) {
-      await put('insumos', { ...insumo, cantidad: (insumo.cantidad ?? 0) + cantidad });
-    }
-  }
 
   await put('costos', nuevo);
 
