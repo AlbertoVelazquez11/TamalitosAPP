@@ -2,10 +2,10 @@
  * insumos.js — Catálogo de Insumos (v2 · Sprint 1)
  *
  * Cambios v2:
- *  - Insumos con cantidad (hasta 1 decimal).
+ *  - Catálogo de insumos: nombre, unidad y descripción.
  *  - Edición completa (nombre, unidad, descripción) excepto la cantidad.
  *  - "Ajustar inventario" manual para corregir el stock.
- *  - La cantidad se mueve por costos (+) y producciones (−).
+ *  - El inventario y el costo unitario se quitaron: los precios por ciclo viven en Insumos del ciclo.
  *
  * Flujo:
  *  - Lista de insumos con cantidad y unidad.
@@ -14,11 +14,11 @@
  *  - Swipe izquierda → eliminar (con confirmación).
  */
 
-import { getAll, put, remove, getUltimoCostoUnitario } from '../db.js';
+import { getAll, put, remove } from '../db.js';
 import { modal }               from '../components/modal.js';
 import { toast }               from '../components/toast.js';
 import { crearSwipeItem }      from '../components/swipe-item.js';
-import { esc, generarId, formatCantidad, formatMXN } from '../utils.js';
+import { esc, generarId } from '../utils.js';
 import { navegarAtras }        from '../router.js';
 import { icon }                from '../components/icons.js';
 
@@ -38,7 +38,7 @@ export async function render(container) {
       </div>
 
       <p class="text-sm text-muted" style="margin-bottom: var(--space-4);">
-        Registra los insumos con su cantidad actual. La cantidad se actualiza
+        Catálogo de nombres y unidades. Los precios por ciclo se registran en
         con compras (costos) y producciones. Toca un insumo para editarlo.
         Desliza hacia la izquierda para eliminarlo.
       </p>
@@ -86,8 +86,7 @@ async function _renderLista(container) {
   lista.innerHTML = '';
 
   for (const insumo of insumos) {
-    const unidad   = insumo.unidad ? `<span class="badge badge-warning" style="font-size:0.7rem">${esc(insumo.unidad)}</span>` : '';
-    const cantidad = formatCantidad(insumo.cantidad);
+    const unidad = insumo.unidad ? `<span class="badge badge-warning" style="font-size:0.7rem">${esc(insumo.unidad)}</span>` : '';
 
     const itemHTML = `
       <div class="list-item insumo-list-item" role="button" tabindex="0"
@@ -95,15 +94,10 @@ async function _renderLista(container) {
         <div class="list-item__icon">🧾</div>
         <div class="list-item__content">
           <div class="list-item__title">${esc(insumo.nombre)}</div>
-          ${(insumo.costoUnitario || insumo.descripcion) ? `
-            <div class="list-item__subtitle">
-              ${insumo.costoUnitario ? formatMXN(insumo.costoUnitario) + '/ud' : ''}${insumo.costoUnitario && insumo.descripcion ? ' · ' : ''}${insumo.descripcion ? esc(insumo.descripcion) : ''}
-            </div>` : ''}
+          ${insumo.descripcion ? `
+            <div class="list-item__subtitle">${esc(insumo.descripcion)}</div>` : ''}
         </div>
-        <div class="list-item__trailing">
-          <span class="font-bold" style="color: var(--color-text);">${cantidad}</span>
-          ${unidad}
-        </div>
+        <div class="list-item__trailing">${unidad}</div>
       </div>`;
 
     const { elemento, cleanup } = crearSwipeItem({
@@ -150,35 +144,6 @@ function _abrirFormulario(insumo, container) {
              maxlength="20" autocomplete="off">
     </div>
 
-    <div class="form-group" style="margin-top: var(--space-3);">
-      <label class="form-label" for="i-costo">Costo unitario (MXN)</label>
-      <div style="display:flex; align-items:center; gap: var(--space-2);">
-        <input id="i-costo" type="number" class="form-input"
-               value="${insumo?.costoUnitario ?? ''}"
-               placeholder="0.00" min="0" step="0.50"
-               inputmode="decimal" autocomplete="off" onfocus="this.select()">
-        ${insumo ? `<button type="button" class="btn btn-secondary btn-sm" id="btn-tomar-costo">Último costo</button>` : ''}
-      </div>
-      <span class="text-xs text-muted">Si no tiene costo, se toma $0.</span>
-    </div>
-
-    ${esNuevo ? `
-    <div class="form-group">
-      <label class="form-label" for="i-cantidad">Cantidad inicial</label>
-      <input id="i-cantidad" type="number" class="form-input"
-             placeholder="0.0" min="0" step="0.1"
-             inputmode="decimal" autocomplete="off">
-    </div>` : `
-    <div class="form-group">
-      <span class="form-label">Inventario actual</span>
-      <div style="display:flex; align-items:center; gap: var(--space-2);">
-        <input type="text" class="form-input" disabled style="flex:1;"
-               value="${formatCantidad(insumo.cantidad)}${insumo.unidad ? ' ' + esc(insumo.unidad) : ''}">
-        <button type="button" class="btn btn-secondary btn-sm" id="btn-ajustar-inventario">Ajustar</button>
-      </div>
-      <span class="text-xs text-muted">La cantidad cambia por compras y producciones.</span>
-    </div>`}
-
     <div class="form-group">
       <label class="form-label" for="i-desc">Descripción <span class="text-muted">(opcional)</span></label>
       <textarea id="i-desc" class="form-textarea"
@@ -195,26 +160,6 @@ function _abrirFormulario(insumo, container) {
     ],
   });
 
-  // Acción de ajuste manual de inventario (solo en edición)
-  if (insumo) {
-    document.getElementById('btn-ajustar-inventario')?.addEventListener('click', () => {
-      cerrar();
-      _abrirAjusteInventario(insumo, container);
-    });
-
-    // Autollenar costo unitario desde el último costo registrado
-    document.getElementById('btn-tomar-costo')?.addEventListener('click', async () => {
-      const valor = await getUltimoCostoUnitario(insumo.id);
-      if (valor == null) {
-        toast.info('Este insumo no tiene costos registrados.');
-        return;
-      }
-      const inputCosto = document.getElementById('i-costo');
-      if (inputCosto) inputCosto.value = valor.toFixed(2);
-      toast.success('Costo actualizado desde el último costo.');
-    });
-  }
-
   setTimeout(() => document.getElementById('i-nombre')?.focus(), 100);
 }
 
@@ -222,7 +167,6 @@ async function _guardarInsumo(insumoExistente, container, cerrar) {
   const nombre       = document.getElementById('i-nombre')?.value.trim();
   const unidad       = document.getElementById('i-unidad')?.value.trim();
   const desc         = document.getElementById('i-desc')?.value.trim();
-  const costoUnitario = parseFloat(document.getElementById('i-costo')?.value) || 0;
 
   if (!nombre) {
     toast.error('El nombre del insumo es obligatorio.');
@@ -236,13 +180,10 @@ async function _guardarInsumo(insumoExistente, container, cerrar) {
       nombre,
       unidad:        unidad || '',
       descripcion:   desc   || '',
-      costoUnitario,
     };
     await put('insumos', actualizado);
     toast.success(`"${nombre}" actualizado.`);
   } else {
-    const cantidad = parseFloat(document.getElementById('i-cantidad')?.value) || 0;
-
     // Verificar que no exista uno con el mismo nombre
     const existentes = await getAll('insumos');
     const duplicado  = existentes.find(
@@ -258,8 +199,6 @@ async function _guardarInsumo(insumoExistente, container, cerrar) {
       nombre,
       unidad:        unidad || '',
       descripcion:   desc   || '',
-      cantidad,
-      costoUnitario,
       creadoEn:      new Date().toISOString(),
     };
     await put('insumos', nuevo);
@@ -274,58 +213,3 @@ async function _guardarInsumo(insumoExistente, container, cerrar) {
 // AJUSTE MANUAL DE INVENTARIO
 // ══════════════════════════════════════════════════════════
 
-function _abrirAjusteInventario(insumo, container) {
-  const cerrar = modal.abrir({
-    titulo: 'Ajustar Inventario',
-    contenido: `
-      <p class="text-sm text-muted" style="margin-bottom: var(--space-3);">
-        Inventario actual de <strong>${esc(insumo.nombre)}</strong>:
-        ${formatCantidad(insumo.cantidad)}${insumo.unidad ? ' ' + esc(insumo.unidad) : ''}.
-      </p>
-      <div class="form-group">
-        <label class="form-label" for="aj-nueva-cantidad">Nueva cantidad</label>
-        <input id="aj-nueva-cantidad" type="number" class="form-input"
-               value="${insumo.cantidad ?? 0}" step="0.1"
-               inputmode="decimal" autocomplete="off" onfocus="this.select()">
-        <span class="text-xs text-muted">Puede ser negativa si el inventario estaba mal registrado.</span>
-      </div>
-    `,
-    botones: [
-      { texto: 'Cancelar', clase: 'btn-ghost', accion: () => cerrar() },
-      {
-        texto: 'Guardar',
-        clase: 'btn-primary',
-        accion: async () => {
-          const valor = parseFloat(document.getElementById('aj-nueva-cantidad')?.value);
-          if (Number.isNaN(valor)) {
-            toast.error('Ingresa una cantidad válida.');
-            return;
-          }
-          await put('insumos', { ...insumo, cantidad: valor });
-          toast.success('Inventario ajustado.');
-          cerrar();
-          await _renderLista(container);
-        },
-      },
-    ],
-  });
-}
-
-// ══════════════════════════════════════════════════════════
-// ELIMINAR
-// ══════════════════════════════════════════════════════════
-
-async function _confirmarEliminar(insumo, container) {
-  const confirmado = await modal.confirmar(
-    'Eliminar Insumo',
-    `¿Eliminar "${insumo.nombre}" del catálogo? Esta acción no se puede deshacer.`,
-    'Eliminar',
-    'btn-danger',
-  );
-
-  if (!confirmado) return;
-
-  await remove('insumos', insumo.id);
-  toast.success(`"${insumo.nombre}" eliminado.`);
-  await _renderLista(container);
-}

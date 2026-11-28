@@ -210,14 +210,6 @@ async function _renderHistorial(container) {
       );
       if (!ok) return;
 
-      // Revertir inventario si fue un costo de insumo
-      if (costo.insumoId && costo.cantidad) {
-        const insumo = await getById('insumos', costo.insumoId);
-        if (insumo) {
-          await put('insumos', { ...insumo, cantidad: (insumo.cantidad ?? 0) - costo.cantidad });
-        }
-      }
-
       // Revertir el dinero a su fuente (solo costos con Finanzas)
       if (costo.fuente && (costo.monto || 0) > 0) {
         await aplicarMovimiento({

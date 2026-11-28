@@ -24,7 +24,9 @@ export const HOJAS = {
                   'precio_unitario', 'subtotal_linea'],
   Productos: ['producto_id', 'nombre', 'precio', 'stock', 'activo', 'orden', 'actualizado_en'],
   Perfiles: ['perfil_id', 'nombre', 'creado_en', 'actualizado_en'],
-  Insumos: ['insumo_id', 'nombre', 'stock', 'costo_unitario', 'actualizado_en'],
+  Insumos: ['insumo_id', 'nombre', 'unidad', 'descripcion'],
+  Insumos_Ciclo: ['compra_id', 'ciclo_inicio', 'ciclo_fin', 'insumo_id', 'insumo',
+                  'cantidad', 'unidad', 'precio_unitario', 'total', 'nota', 'creado_en'],
   Costos: ['costo_id', 'fecha', 'categoria', 'insumo_id', 'concepto', 'monto', 'fuente',
            'cantidad', 'creado_en'],
   Producciones: ['produccion_id', 'fecha', 'producto_id', 'producto', 'cantidad', 'costo_total', 'creado_en'],
@@ -105,12 +107,28 @@ export function filasDePerfiles(perfiles = []) {
 }
 
 export function filasDeInsumos(insumos = []) {
+  // Sin inventario ni costo unitario: el precio por ciclo vive en Insumos_Ciclo.
   return insumos.map(i => ({
-    insumo_id:      texto(i.id),
-    nombre:         texto(i.nombre),
-    stock:          num(i.cantidad),
-    costo_unitario: num(i.costoUnitario),
-    actualizado_en: texto(i.actualizadoEn || i.creadoEn),
+    insumo_id:   texto(i.id),
+    nombre:      texto(i.nombre),
+    unidad:      texto(i.unidad),
+    descripcion: texto(i.descripcion),
+  }));
+}
+
+export function filasDeComprasInsumos(compras = []) {
+  return compras.map(c => ({
+    compra_id:       texto(c.id),
+    ciclo_inicio:    texto(c.cicloInicio),
+    ciclo_fin:       texto(c.cicloFin),
+    insumo_id:       texto(c.insumoId),
+    insumo:          texto(c.nombre),
+    cantidad:        num(c.cantidad),
+    unidad:          texto(c.unidad),
+    precio_unitario: num(c.precioUnitario),
+    total:           num(c.total),
+    nota:            texto(c.nota),
+    creado_en:       texto(c.creadoEn),
   }));
 }
 
@@ -220,6 +238,7 @@ export function construirPayload(datos = {}, { dispositivo = '', version = APP_V
       Productos:         filasDeProductos(datos.productos),
       Perfiles:          filasDePerfiles(datos.perfiles),
       Insumos:           filasDeInsumos(datos.insumos),
+      Insumos_Ciclo:     filasDeComprasInsumos(datos.comprasInsumos),
       Clientes:          filasDeClientes(datos.clientes),
       Pedidos:           filasDePedidos(datos.pedidos),
       Pedidos_Lineas:    filasDePedidosLineas(datos.pedidos),

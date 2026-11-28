@@ -38,8 +38,14 @@ const HOJAS = {
     tipos: {},
   },
   Insumos: {
-    encabezados: ['insumo_id', 'nombre', 'stock', 'costo_unitario', 'actualizado_en'],
-    tipos: { stock: 'numero', costo_unitario: 'moneda' },
+    encabezados: ['insumo_id', 'nombre', 'unidad', 'descripcion'],
+    tipos: {},
+  },
+  Insumos_Ciclo: {
+    encabezados: ['compra_id', 'ciclo_inicio', 'ciclo_fin', 'insumo_id', 'insumo',
+                  'cantidad', 'unidad', 'precio_unitario', 'total', 'nota', 'creado_en'],
+    tipos: { ciclo_inicio: 'texto', ciclo_fin: 'texto', cantidad: 'numero',
+             precio_unitario: 'moneda', total: 'moneda' },
   },
   Costos: {
     encabezados: ['costo_id', 'fecha', 'categoria', 'insumo_id', 'concepto', 'monto', 'fuente',

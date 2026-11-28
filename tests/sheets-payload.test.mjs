@@ -11,6 +11,8 @@ import {
   filasDePedidosLineas,
   filasDeCaja,
   filasDePerfiles,
+  filasDeInsumos,
+  filasDeComprasInsumos,
   construirPayload,
   validarPayload,
 } from '../Codigo/js/sheets.js';
@@ -63,9 +65,24 @@ test('los perfiles salen como catálogo para filtrar ventas', () => {
   assert.equal(fila.nombre, 'General');
 });
 
+test('los insumos ya no llevan inventario ni costo unitario', () => {
+  const [fila] = filasDeInsumos([{ id: 'i1', nombre: 'Maseca', unidad: 'kg', descripcion: 'para tamales', cantidad: 9, costoUnitario: 22 }]);
+  assert.deepEqual(Object.keys(fila).sort(), ['descripcion', 'insumo_id', 'nombre', 'unidad']);
+});
+
+test('las compras de insumos por ciclo salen completas', () => {
+  const [fila] = filasDeComprasInsumos([{
+    id: 'compra_1', cicloInicio: '2026-11-27', cicloFin: '2026-12-03', insumoId: 'i1',
+    nombre: 'Maseca', cantidad: 3, unidad: 'kg', precioUnitario: 22, total: 66, nota: 'subió',
+  }]);
+  assert.equal(fila.total, 66);
+  assert.equal(fila.ciclo_inicio, '2026-11-27');
+  assert.equal(Object.keys(fila).length, 11);
+});
+
 test('cada hoja del payload tiene las mismas columnas que la plantilla', () => {
   const esperado = {
-    Ventas: 14, Ventas_Lineas: 8, Productos: 7, Perfiles: 4, Insumos: 5, Costos: 9,
+    Ventas: 14, Ventas_Lineas: 8, Productos: 7, Perfiles: 4, Insumos: 4, Costos: 9, Insumos_Ciclo: 11,
     Producciones: 7, Clientes: 6, Pedidos: 10, Pedidos_Lineas: 7, Caja_Movimientos: 9,
   };
   for (const [hoja, largo] of Object.entries(esperado)) {
@@ -142,7 +159,8 @@ test('el payload completo valida contra el contrato', () => {
     detalleVenta: [DETALLE],
     productos: [{ id: 'p1', nombre: 'Verde', precio: 20 }],
     perfiles: [{ id: 'perfil_general', nombre: 'General' }],
-    insumos: [{ id: 'i1', nombre: 'Masa', cantidad: 3 }],
+    insumos: [{ id: 'i1', nombre: 'Masa', unidad: 'kg' }],
+    comprasInsumos: [{ id: 'compra_1', insumoId: 'i1', nombre: 'Masa', cantidad: 1, unidad: 'kg', precioUnitario: 20, total: 20, cicloInicio: '2026-11-27' }],
     costos: [{ id: 'c1', fecha: '2026-11-27', monto: 100 }],
     producciones: [{ id: 'pr1', fecha: '2026-11-27', productoId: 'p1', cantidadProducida: 50 }],
     clientes: [{ id: 'cli1', nombre: 'Lupe' }],
